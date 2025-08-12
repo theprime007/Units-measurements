@@ -65,19 +65,28 @@ let state = {
   testDuration: 60, // minutes
   isRRBMode: false,
   isDarkMode: false,
+  enhancedTimer: false,
   reviewCurrentQ: 0,
-  results: null
+  results: null,
+  questionSource: 'default',
+  customQuestions: null
 };
 
-// Timers
+// Timers and managers
 let mainTimer = null;
 let questionTimer = null;
 let questionStartTime = null;
 let autoSaveInterval = null;
+let customMainTimer = null;
+let customQuestionTimer = null;
+let questionManager = null;
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
   try {
+    // Initialize question manager
+    questionManager = new QuestionManager();
+    
     loadState();
     setupEventListeners();
     updateLandingView();
@@ -101,6 +110,10 @@ function setupEventListeners() {
     document.getElementById('test-duration').addEventListener('change', updateTestDuration);
     document.getElementById('rrb-mode').addEventListener('change', toggleRRBMode);
     document.getElementById('dark-mode').addEventListener('change', toggleDarkMode);
+    document.getElementById('enhanced-timer').addEventListener('change', toggleEnhancedTimer);
+    document.getElementById('question-source').addEventListener('change', toggleQuestionSource);
+    document.getElementById('json-file').addEventListener('change', handleJSONUpload);
+    document.getElementById('download-example-btn').addEventListener('click', downloadExampleJSON);
 
     // Test view
     document.getElementById('bookmark-btn').addEventListener('click', toggleBookmark);
@@ -200,8 +213,11 @@ function resetState() {
     testDuration: 60,
     isRRBMode: false,
     isDarkMode: false,
+    enhancedTimer: false,
     reviewCurrentQ: 0,
-    results: null
+    results: null,
+    questionSource: 'default',
+    customQuestions: null
   };
   saveState();
 }
@@ -227,6 +243,14 @@ function updateLandingView() {
     document.getElementById('test-duration').value = state.testDuration;
     document.getElementById('rrb-mode').checked = state.isRRBMode;
     document.getElementById('dark-mode').checked = state.isDarkMode;
+    document.getElementById('enhanced-timer').checked = state.enhancedTimer;
+    document.getElementById('question-source').value = state.questionSource;
+    
+    // Update question count display
+    updateQuestionCount();
+    
+    // Show/hide JSON upload section
+    toggleQuestionSource();
     
     if (state.isRRBMode) {
       document.body.setAttribute('data-rrb-mode', 'true');
@@ -318,64 +342,262 @@ function toggleDarkMode() {
   }
 }
 
+function toggleEnhancedTimer() {
+  try {
+    state.enhancedTimer = document.getElementById('enhanced-timer').checked;
+    saveState();
+  } catch (error) {
+    console.error('Toggle enhanced timer error:', error);
+  }
+}
+
+function toggleQuestionSource() {
+  try {
+    const questionSource = document.getElementById('question-source').value;
+    const jsonSection = document.getElementById('json-upload-section');
+    
+    state.questionSource = questionSource;
+    
+    if (questionSource === 'json') {
+      jsonSection.classList.remove('hidden');
+    } else {
+      jsonSection.classList.add('hidden');
+      // Clear any previous JSON status
+      document.getElementById('json-status').classList.add('hidden');
+    }
+    
+    saveState();
+  } catch (error) {
+    console.error('Toggle question source error:', error);
+  }
+}
+
+async function handleJSONUpload(event) {
+  const file = event.target.files[0];
+  const statusElement = document.getElementById('json-status');
+  
+  if (!file) {
+    statusElement.classList.add('hidden');
+    return;
+  }
+  
+  try {
+    statusElement.classList.remove('hidden', 'success', 'error');
+    statusElement.innerHTML = '<div>Processing JSON file...</div>';
+    
+    const result = await questionManager.loadFromFile(file);
+    
+    if (result.success) {
+      state.customQuestions = result.questions;
+      // Update state to reflect new question count
+      state.answers = Array(result.questions.length).fill(null);
+      state.bookmarked = Array(result.questions.length).fill(false);
+      state.timeSpent = Array(result.questions.length).fill(0);
+      
+      statusElement.classList.add('success');
+      statusElement.innerHTML = `
+        <div>✅ Successfully loaded ${result.count} questions from JSON file</div>
+      `;
+      
+      updateQuestionCount();
+      saveState();
+    }
+  } catch (error) {
+    statusElement.classList.add('error');
+    statusElement.innerHTML = `
+      <div>❌ Failed to load JSON file:</div>
+      <ul><li>${error.error || error.message}</li></ul>
+    `;
+    
+    // Reset to default questions
+    state.questionSource = 'default';
+    document.getElementById('question-source').value = 'default';
+    state.customQuestions = null;
+    updateQuestionCount();
+  }
+}
+
+function downloadExampleJSON() {
+  try {
+    const exampleData = questionManager.getExampleJSON();
+    const dataStr = JSON.stringify(exampleData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'example-questions.json';
+    link.click();
+  } catch (error) {
+    console.error('Download example JSON error:', error);
+  }
+}
+
+function updateQuestionCount() {
+  try {
+    const totalQuestions = getCurrentQuestions().length;
+    // Update test info to show current question count
+    const testInfo = document.querySelector('.test-info p');
+    if (testInfo) {
+      const sourceText = state.questionSource === 'json' ? 'Custom JSON' : 'Default';
+      testInfo.textContent = `${totalQuestions} Questions • Mixed Difficulty • ${sourceText} • Complete Analysis`;
+    }
+  } catch (error) {
+    console.error('Update question count error:', error);
+  }
+}
+
+function getCurrentQuestions() {
+  return state.customQuestions || QUESTIONS;
+}
+
 // Timer functions
 function startMainTimer() {
   try {
-    if (mainTimer) clearInterval(mainTimer);
-    
-    mainTimer = setInterval(() => {
-      const elapsed = Date.now() - state.testStart;
-      const remaining = (state.testDuration * 60 * 1000) - elapsed;
-      
-      if (remaining <= 0) {
-        submitTest();
-        return;
-      }
-      
-      const hours = Math.floor(remaining / (1000 * 60 * 60));
-      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-      
-      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      document.getElementById('main-timer').textContent = timeString;
-      
-      // Add warning classes
-      const timerElement = document.getElementById('main-timer');
-      timerElement.classList.remove('warning', 'danger');
-      if (remaining < 5 * 60 * 1000) { // Last 5 minutes
-        timerElement.classList.add('danger');
-      } else if (remaining < 10 * 60 * 1000) { // Last 10 minutes
-        timerElement.classList.add('warning');
-      }
-    }, 1000);
+    if (state.enhancedTimer) {
+      startEnhancedMainTimer();
+    } else {
+      startBasicMainTimer();
+    }
   } catch (error) {
     console.error('Start main timer error:', error);
   }
 }
 
+function startEnhancedMainTimer() {
+  // Stop any existing timer
+  if (customMainTimer) {
+    customMainTimer.stop();
+  }
+  
+  const timerElement = document.getElementById('main-timer');
+  const progressElement = document.getElementById('main-timer-progress');
+  
+  // Show progress bar for enhanced timer
+  progressElement.classList.remove('hidden');
+  
+  customMainTimer = new CustomTimer({
+    duration: state.testDuration,
+    element: timerElement,
+    progressElement: progressElement,
+    audioAlert: true,
+    visualAlert: true,
+    warningThresholds: [10, 5, 2],
+    onComplete: () => {
+      submitTest();
+    },
+    onWarning: (threshold) => {
+      console.log(`Timer warning: ${threshold} minutes remaining`);
+    }
+  });
+  
+  customMainTimer.start();
+}
+
+function startBasicMainTimer() {
+  if (mainTimer) clearInterval(mainTimer);
+  
+  mainTimer = setInterval(() => {
+    const elapsed = Date.now() - state.testStart;
+    const remaining = (state.testDuration * 60 * 1000) - elapsed;
+    
+    if (remaining <= 0) {
+      submitTest();
+      return;
+    }
+    
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+    
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    document.getElementById('main-timer').textContent = timeString;
+    
+    // Add warning classes
+    const timerElement = document.getElementById('main-timer');
+    timerElement.classList.remove('warning', 'danger');
+    if (remaining < 5 * 60 * 1000) { // Last 5 minutes
+      timerElement.classList.add('danger');
+    } else if (remaining < 10 * 60 * 1000) { // Last 10 minutes
+      timerElement.classList.add('warning');
+    }
+  }, 1000);
+}
+
 function startQuestionTimer() {
   try {
-    questionStartTime = Date.now();
-    
-    if (questionTimer) clearInterval(questionTimer);
-    
-    questionTimer = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
-      const minutes = Math.floor(elapsed / 60);
-      const seconds = elapsed % 60;
-      
-      document.getElementById('question-timer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }, 1000);
+    if (state.enhancedTimer) {
+      startEnhancedQuestionTimer();
+    } else {
+      startBasicQuestionTimer();
+    }
   } catch (error) {
     console.error('Start question timer error:', error);
   }
 }
 
+function startEnhancedQuestionTimer() {
+  // Stop any existing timer
+  if (customQuestionTimer) {
+    customQuestionTimer.stop();
+  }
+  
+  const timerElement = document.getElementById('question-timer');
+  const progressElement = document.getElementById('question-timer-progress');
+  
+  // Show progress bar for enhanced timer
+  progressElement.classList.remove('hidden');
+  
+  // Get time limit for current question (if available)
+  const currentQuestions = getCurrentQuestions();
+  const currentQuestion = currentQuestions[state.currentQ];
+  const timeLimit = (currentQuestion && currentQuestion.timeLimit) ? 
+    currentQuestion.timeLimit / 60 : 5; // Default 5 minutes per question
+  
+  questionStartTime = Date.now();
+  
+  customQuestionTimer = new CustomTimer({
+    duration: timeLimit,
+    element: timerElement,
+    progressElement: progressElement,
+    audioAlert: false, // Don't compete with main timer alerts
+    visualAlert: true,
+    warningThresholds: [2, 1],
+    onTick: (remaining) => {
+      // Update time spent tracking
+      const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
+      state.timeSpent[state.currentQ] = elapsed;
+    }
+  });
+  
+  customQuestionTimer.start();
+}
+
+function startBasicQuestionTimer() {
+  questionStartTime = Date.now();
+  
+  if (questionTimer) clearInterval(questionTimer);
+  
+  questionTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    
+    document.getElementById('question-timer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }, 1000);
+}
+
 function stopQuestionTimer() {
   try {
-    if (questionTimer) {
-      clearInterval(questionTimer);
-      questionTimer = null;
+    if (state.enhancedTimer && customQuestionTimer) {
+      customQuestionTimer.stop();
+      customQuestionTimer = null;
+      // Hide progress bar
+      document.getElementById('question-timer-progress').classList.add('hidden');
+    } else {
+      if (questionTimer) {
+        clearInterval(questionTimer);
+        questionTimer = null;
+      }
     }
     
     if (questionStartTime) {
@@ -403,7 +625,8 @@ function startAutoSave() {
 // Question display and navigation
 function displayQuestion() {
   try {
-    const question = QUESTIONS[state.currentQ];
+    const currentQuestions = getCurrentQuestions();
+    const question = currentQuestions[state.currentQ];
     
     // Stop previous question timer
     stopQuestionTimer();
@@ -441,7 +664,11 @@ function displayQuestion() {
     
     // Update navigation buttons
     document.getElementById('prev-btn').disabled = state.currentQ === 0;
-    document.getElementById('next-btn').textContent = state.currentQ === 49 ? 'Finish →' : 'Next →';
+    const totalQuestions = currentQuestions.length;
+    document.getElementById('next-btn').textContent = state.currentQ === totalQuestions - 1 ? 'Finish →' : 'Next →';
+    
+    // Update question number display
+    document.querySelector('.question-number').innerHTML = `Question <span id="current-q-num">${state.currentQ + 1}</span> of ${totalQuestions}`;
     
     // Start question timer
     startQuestionTimer();
@@ -468,12 +695,13 @@ function selectOption(optionIndex) {
 
 function navigateQuestion(direction) {
   try {
+    const currentQuestions = getCurrentQuestions();
     const newQ = state.currentQ + direction;
-    if (newQ >= 0 && newQ < 50) {
+    if (newQ >= 0 && newQ < currentQuestions.length) {
       state.currentQ = newQ;
       saveState();
       displayQuestion();
-    } else if (newQ >= 50) {
+    } else if (newQ >= currentQuestions.length) {
       submitTest();
     }
   } catch (error) {
@@ -528,9 +756,10 @@ function hideReviewPanel() {
 function updateReviewGrid() {
   try {
     const reviewGrid = document.getElementById('review-grid');
+    const currentQuestions = getCurrentQuestions();
     reviewGrid.innerHTML = '';
     
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < currentQuestions.length; i++) {
       const item = document.createElement('div');
       item.className = 'review-item';
       item.textContent = i + 1;
@@ -573,7 +802,23 @@ function submitTest() {
     state.testEnd = Date.now();
     stopQuestionTimer();
     
-    if (mainTimer) clearInterval(mainTimer);
+    // Stop timers
+    if (state.enhancedTimer) {
+      if (customMainTimer) {
+        customMainTimer.stop();
+        customMainTimer = null;
+      }
+      if (customQuestionTimer) {
+        customQuestionTimer.stop();
+        customQuestionTimer = null;
+      }
+      // Hide progress bars
+      document.getElementById('main-timer-progress').classList.add('hidden');
+      document.getElementById('question-timer-progress').classList.add('hidden');
+    } else {
+      if (mainTimer) clearInterval(mainTimer);
+    }
+    
     if (autoSaveInterval) clearInterval(autoSaveInterval);
     
     saveState();
@@ -586,9 +831,12 @@ function submitTest() {
 
 function calculateResults() {
   try {
+    const currentQuestions = getCurrentQuestions();
+    const totalQuestions = currentQuestions.length;
+    
     const results = {
       score: 0,
-      totalQuestions: 50,
+      totalQuestions: totalQuestions,
       totalTime: state.testEnd - state.testStart,
       questionResults: [],
       topicStats: {},
@@ -596,8 +844,8 @@ function calculateResults() {
     };
     
     // Calculate score and detailed results
-    for (let i = 0; i < 50; i++) {
-      const question = QUESTIONS[i];
+    for (let i = 0; i < totalQuestions; i++) {
+      const question = currentQuestions[i];
       const userAnswer = state.answers[i];
       const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
       const timeSpent = state.timeSpent[i];
@@ -897,7 +1145,8 @@ function showReviewAnswers() {
 function displayReviewQuestion() {
   try {
     const qIndex = state.reviewCurrentQ;
-    const question = QUESTIONS[qIndex];
+    const currentQuestions = getCurrentQuestions();
+    const question = currentQuestions[qIndex];
     const result = state.results.questionResults[qIndex];
     
     document.getElementById('review-q-num').textContent = qIndex + 1;
@@ -923,8 +1172,12 @@ function displayReviewQuestion() {
     document.getElementById('question-status-display').className = `stat-value ${result.status}-status`;
     
     // Navigation
+    const totalQuestions = currentQuestions.length;
     document.getElementById('review-prev-btn').disabled = qIndex === 0;
-    document.getElementById('review-next-btn').disabled = qIndex === 49;
+    document.getElementById('review-next-btn').disabled = qIndex === totalQuestions - 1;
+    
+    // Update question count display
+    document.querySelector('#review-answers-view .question-number').innerHTML = `Question <span id="review-q-num">${qIndex + 1}</span> of ${totalQuestions}`;
   } catch (error) {
     console.error('Display review question error:', error);
   }
@@ -932,8 +1185,9 @@ function displayReviewQuestion() {
 
 function navigateReview(direction) {
   try {
+    const currentQuestions = getCurrentQuestions();
     const newQ = state.reviewCurrentQ + direction;
-    if (newQ >= 0 && newQ < 50) {
+    if (newQ >= 0 && newQ < currentQuestions.length) {
       state.reviewCurrentQ = newQ;
       displayReviewQuestion();
     }
