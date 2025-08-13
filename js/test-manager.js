@@ -432,6 +432,7 @@ class TestManager {
       if (this.autoSaveInterval) clearInterval(this.autoSaveInterval);
       
       this.calculateResults();
+      this.displayResults();
       this.viewManager.showView('result');
     } catch (error) {
       console.error('Submit test error:', error);
@@ -500,6 +501,275 @@ class TestManager {
       this.stateManager.setResults(results);
     } catch (error) {
       console.error('Calculate results error:', error);
+    }
+  }
+
+  // Display test results
+  displayResults() {
+    try {
+      const results = this.stateManager.getResults();
+      if (!results) return;
+      
+      const scorePercentage = Math.round((results.score / results.totalQuestions) * 100);
+      
+      // Update score display
+      this.viewManager.updateElement('score-percentage', `${scorePercentage}%`);
+      this.viewManager.updateElement('correct-answers', `${results.score}/${results.totalQuestions}`);
+      this.viewManager.updateElement('total-time', Utils.formatTime(results.totalTime));
+      
+      const avgTime = Math.round(results.totalTime / results.totalQuestions);
+      this.viewManager.updateElement('avg-time', Utils.formatTime(avgTime));
+      
+      // Setup and draw charts
+      this.setupCharts();
+      this.drawTopicChart(results.topicStats);
+      this.drawDifficultyChart(results.difficultyStats);
+      
+      // Display analysis
+      this.displayAnalysis(results);
+      
+      // Populate results table
+      this.populateResultsTable(results.questionResults);
+    } catch (error) {
+      console.error('Display results error:', error);
+    }
+  }
+
+  // Setup chart canvases
+  setupCharts() {
+    try {
+      ['topic-chart', 'difficulty-chart'].forEach(chartId => {
+        const canvas = document.getElementById(chartId);
+        if (canvas) {
+          const container = canvas.parentElement;
+          const rect = container.getBoundingClientRect();
+          canvas.width = rect.width || 300;
+          canvas.height = rect.height || 300;
+        }
+      });
+    } catch (error) {
+      console.error('Setup charts error:', error);
+    }
+  }
+
+  // Draw topic-wise accuracy chart
+  drawTopicChart(topicStats) {
+    try {
+      const canvas = document.getElementById('topic-chart');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = Math.min(centerX, centerY) - 20;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const topics = Object.keys(topicStats);
+      const colors = ['#1FB8CD', '#FFC185', '#B4413C', '#ECEBD5', '#5D878F', '#DB4545', '#D2BA4C', '#964325'];
+      
+      let total = 0;
+      topics.forEach(topic => {
+        if (topicStats[topic].attempted > 0) {
+          total += topicStats[topic].attempted;
+        }
+      });
+      
+      if (total === 0) {
+        ctx.fillStyle = '#666';
+        ctx.font = '16px Roboto';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available', centerX, centerY);
+        return;
+      }
+      
+      let currentAngle = -Math.PI / 2;
+      
+      topics.forEach((topic, index) => {
+        if (topicStats[topic].attempted > 0) {
+          const percentage = topicStats[topic].attempted / total;
+          const sliceAngle = percentage * 2 * Math.PI;
+          const accuracy = topicStats[topic].correct / topicStats[topic].attempted * 100;
+          
+          // Draw slice
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+          ctx.closePath();
+          ctx.fillStyle = colors[index % colors.length];
+          ctx.fill();
+          
+          // Draw label
+          const labelAngle = currentAngle + sliceAngle / 2;
+          const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+          const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+          
+          ctx.fillStyle = '#000';
+          ctx.font = '12px Roboto';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${topic}`, labelX, labelY - 5);
+          ctx.fillText(`${accuracy.toFixed(0)}%`, labelX, labelY + 10);
+          
+          currentAngle += sliceAngle;
+        }
+      });
+    } catch (error) {
+      console.error('Draw topic chart error:', error);
+    }
+  }
+
+  // Draw difficulty-wise performance chart
+  drawDifficultyChart(difficultyStats) {
+    try {
+      const canvas = document.getElementById('difficulty-chart');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const difficulties = ['Easy', 'Medium', 'Hard'];
+      const colors = ['#1FB8CD', '#FFC185', '#B4413C'];
+      const barWidth = (canvas.width / difficulties.length) - 40;
+      const maxHeight = canvas.height - 60;
+      
+      let maxValue = 0;
+      difficulties.forEach(diff => {
+        if (difficultyStats[diff] && difficultyStats[diff].attempted > 0) {
+          const accuracy = difficultyStats[diff].correct / difficultyStats[diff].attempted;
+          maxValue = Math.max(maxValue, accuracy);
+        }
+      });
+      
+      if (maxValue === 0) {
+        ctx.fillStyle = '#666';
+        ctx.font = '16px Roboto';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+      
+      difficulties.forEach((diff, index) => {
+        const stats = difficultyStats[diff];
+        if (stats && stats.attempted > 0) {
+          const accuracy = stats.correct / stats.attempted;
+          const barHeight = (accuracy / maxValue) * maxHeight;
+          const x = 20 + index * (barWidth + 20);
+          const y = canvas.height - 40 - barHeight;
+          
+          // Draw bar
+          ctx.fillStyle = colors[index];
+          ctx.fillRect(x, y, barWidth, barHeight);
+          
+          // Draw label
+          ctx.fillStyle = '#000';
+          ctx.font = '14px Roboto';
+          ctx.textAlign = 'center';
+          ctx.fillText(diff, x + barWidth / 2, canvas.height - 20);
+          ctx.fillText(`${(accuracy * 100).toFixed(0)}%`, x + barWidth / 2, y - 5);
+        }
+      });
+    } catch (error) {
+      console.error('Draw difficulty chart error:', error);
+    }
+  }
+
+  // Display performance analysis
+  displayAnalysis(results) {
+    try {
+      // Strengths and weaknesses
+      const topics = Object.entries(results.topicStats)
+        .filter(([topic, stats]) => stats.attempted > 0)
+        .map(([topic, stats]) => ({
+          topic,
+          accuracy: stats.correct / stats.attempted,
+          avgTime: stats.timeTotal / stats.attempted
+        }))
+        .sort((a, b) => b.accuracy - a.accuracy);
+      
+      // Strengths (accuracy > 80%)
+      const strengths = topics.filter(t => t.accuracy > 0.8);
+      const strengthsList = document.getElementById('strengths-list');
+      if (strengthsList) {
+        strengthsList.innerHTML = strengths.length === 0 
+          ? '<li>Work on improving accuracy to identify strengths</li>'
+          : strengths.map(t => `<li>${t.topic}: ${(t.accuracy * 100).toFixed(0)}% accuracy</li>`).join('');
+      }
+      
+      // Weaknesses (accuracy < 60%)
+      const weaknesses = topics.filter(t => t.accuracy < 0.6);
+      const weaknessesList = document.getElementById('weaknesses-list');
+      if (weaknessesList) {
+        weaknessesList.innerHTML = weaknesses.length === 0
+          ? '<li>Great job! No major weak areas identified</li>'
+          : weaknesses.map(t => `<li>${t.topic}: ${(t.accuracy * 100).toFixed(0)}% accuracy</li>`).join('');
+      }
+      
+      // Study recommendations
+      const studyActions = [];
+      
+      // Top 3 weakest topics
+      const topWeaknesses = topics.slice(-3).reverse();
+      topWeaknesses.forEach((topic, index) => {
+        if (topic.accuracy < 0.7) {
+          studyActions.push(`Focus on ${topic.topic} - Review NCERT Physics Chapter on Units & Measurements`);
+        }
+      });
+      
+      // Topics with high time consumption
+      const slowTopics = topics.filter(t => t.avgTime > 90).slice(0, 2);
+      slowTopics.forEach(topic => {
+        studyActions.push(`Practice more ${topic.topic} problems to improve speed`);
+      });
+      
+      // Generic recommendations
+      if (studyActions.length < 5) {
+        const generic = [
+          'Practice dimensional analysis shortcuts and tricks',
+          'Memorize common dimensional formulas',
+          'Solve 20 additional practice problems daily',
+          'Take more timed mock tests',
+          'Review solutions for all incorrect answers'
+        ];
+        
+        generic.forEach(action => {
+          if (studyActions.length < 5) {
+            studyActions.push(action);
+          }
+        });
+      }
+      
+      const studyActionsList = document.getElementById('study-actions');
+      if (studyActionsList) {
+        studyActionsList.innerHTML = studyActions
+          .slice(0, 5)
+          .map(action => `<li>${action}</li>`)
+          .join('');
+      }
+    } catch (error) {
+      console.error('Display analysis error:', error);
+    }
+  }
+
+  // Populate results table
+  populateResultsTable(questionResults) {
+    try {
+      const tbody = document.querySelector('#results-table tbody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = '';
+      
+      questionResults.forEach(result => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+          <td>${result.questionId}</td>
+          <td>${result.topic}</td>
+          <td>${result.difficulty}</td>
+          <td class="${result.status}-status">${result.status.charAt(0).toUpperCase() + result.status.slice(1)}</td>
+          <td>${Utils.formatTime(result.timeSpent * 1000)}</td>
+        `;
+      });
+    } catch (error) {
+      console.error('Populate results table error:', error);
     }
   }
 
