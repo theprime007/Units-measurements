@@ -1,539 +1,590 @@
-// Main Application Module - Simplified and Modular
-// Coordinates all other modules and handles application lifecycle
+// Main Application Module
+// Handles application initialization, event binding, and core functionality
 
 class MockTestApp {
   constructor() {
-    // Module instances
     this.stateManager = null;
     this.viewManager = null;
-    this.questionManager = null;
     this.testManager = null;
-    
-    // Default questions data (loaded from external file)
-    this.DEFAULT_QUESTIONS = typeof DEFAULT_QUESTIONS !== 'undefined' ? DEFAULT_QUESTIONS : [];
+    this.questionManager = null;
   }
 
   // Initialize the application
   async init() {
     try {
-      // Initialize modules
+      // Initialize managers
       this.stateManager = new StateManager();
       this.viewManager = new ViewManager();
       this.questionManager = new QuestionManager();
-      
-      // Load state and initialize view manager
-      this.stateManager.loadState();
-      
-      // Set default questions if none are set or if they have wrong count
-      const state = this.stateManager.getState();
-      if (!state.customQuestions || state.customQuestions.length !== this.DEFAULT_QUESTIONS.length) {
-        this.stateManager.setCustomQuestions(this.DEFAULT_QUESTIONS);
-      }
-      
-      // Initialize test manager with dependencies
       this.testManager = new TestManager(this.stateManager, this.viewManager, this.questionManager);
-      
+
+      // Initialize managers
       await this.viewManager.init();
-      
+      await this.stateManager.init();
+
       // Setup event listeners
       this.setupEventListeners();
-      
-      // Update landing view with current state
-      this.viewManager.updateLandingView(this.stateManager.getState());
-      
+
+      // Update UI with current state
+      this.updateUI();
+
       console.log('MockTestApp initialized successfully');
     } catch (error) {
       console.error('App initialization error:', error);
-      Utils.showError('Failed to initialize application');
+      this.showError('Failed to initialize application');
     }
   }
 
   // Setup all event listeners
   setupEventListeners() {
     try {
-      // Landing view events
-      this.bindLandingEvents();
+      // Landing view event listeners
+      this.setupLandingEventListeners();
       
-      // Test view events - delegate to TestManager
-      this.bindTestEvents();
+      // Test view event listeners
+      this.setupTestEventListeners();
       
-      // Review panel events - delegate to TestManager
-      this.bindReviewEvents();
+      // Result view event listeners
+      this.setupResultEventListeners();
       
-      // Result view events
-      this.bindResultEvents();
-      
-      // Review answers events
-      this.bindReviewAnswersEvents();
-      
-      // Keyboard navigation - delegate to TestManager
-      this.bindKeyboardEvents();
-      
-      console.log('Event listeners setup complete');
+      // Global event listeners
+      this.setupGlobalEventListeners();
     } catch (error) {
-      console.error('Event listener setup error:', error);
+      console.error('Setup event listeners error:', error);
     }
   }
 
-  // Bind landing view events
-  bindLandingEvents() {
-    const elements = {
-      'start-test-btn': () => this.startTest(),
-      'resume-test-btn': () => this.resumeTest(),
-      'reset-test-btn': () => this.resetTest(),
-      'test-duration': () => this.updateTestDuration(),
-      'custom-minutes': () => this.validateCustomDuration(),
-      'custom-seconds': () => this.validateCustomDuration(),
-      'rrb-mode': () => this.toggleRRBMode(),
-      'dark-mode': () => this.toggleDarkMode(),
-      'enhanced-timer': () => this.toggleEnhancedTimer(),
-      'question-source': () => this.toggleQuestionSource(),
-      'json-file': (e) => this.handleJSONUpload(e),
-      'download-example-btn': () => this.downloadExampleJSON()
-    };
-
-    this.bindElements(elements);
-  }
-
-  // Bind test view events
-  bindTestEvents() {
-    const elements = {
-      'bookmark-btn': () => this.testManager.toggleBookmark(),
-      'clear-answer-btn': () => this.testManager.clearAnswer(),
-      'prev-btn': () => this.testManager.navigateQuestion(-1),
-      'next-btn': () => this.testManager.navigateQuestion(1),
-      'review-panel-btn': () => this.testManager.showReviewPanel(),
-      'submit-test-btn': () => this.testManager.submitTest()
-    };
-
-    this.bindElements(elements, 'click');
-  }
-
-  // Bind review panel events
-  bindReviewEvents() {
-    const elements = {
-      'close-review-btn': () => this.testManager.hideReviewPanel(),
-      'submit-from-review-btn': () => this.testManager.submitTest()
-    };
-
-    this.bindElements(elements, 'click');
-
-    // Modal backdrop and close button
-    const modalClose = document.querySelector('.modal-close');
-    const modalBackdrop = document.querySelector('.modal-backdrop');
-    
-    if (modalClose) {
-      Utils.addEventListener(modalClose, 'click', () => this.testManager.hideReviewPanel());
+  // Setup landing view event listeners
+  setupLandingEventListeners() {
+    // Start test button
+    const startBtn = document.getElementById('start-test-btn');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => this.startTest());
     }
-    if (modalBackdrop) {
-      Utils.addEventListener(modalBackdrop, 'click', () => this.testManager.hideReviewPanel());
+
+    // Resume test button
+    const resumeBtn = document.getElementById('resume-test-btn');
+    if (resumeBtn) {
+      resumeBtn.addEventListener('click', () => this.resumeTest());
+    }
+
+    // Reset test button
+    const resetBtn = document.getElementById('reset-test-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => this.resetTest());
+    }
+
+    // Test duration change
+    const durationSelect = document.getElementById('test-duration');
+    if (durationSelect) {
+      durationSelect.addEventListener('change', (e) => this.updateTestDuration(e));
+    }
+
+    // Custom duration inputs
+    const customMinutes = document.getElementById('custom-minutes');
+    const customSeconds = document.getElementById('custom-seconds');
+    if (customMinutes) {
+      customMinutes.addEventListener('input', () => this.validateCustomDuration());
+    }
+    if (customSeconds) {
+      customSeconds.addEventListener('input', () => this.validateCustomDuration());
+    }
+
+    // Mode toggles
+    const rrbMode = document.getElementById('rrb-mode');
+    if (rrbMode) {
+      rrbMode.addEventListener('change', (e) => this.toggleRRBMode(e));
+    }
+
+    const darkMode = document.getElementById('dark-mode');
+    if (darkMode) {
+      darkMode.addEventListener('change', (e) => this.toggleDarkMode(e));
+    }
+
+    const enhancedTimer = document.getElementById('enhanced-timer');
+    if (enhancedTimer) {
+      enhancedTimer.addEventListener('change', (e) => this.toggleEnhancedTimer(e));
+    }
+
+    // Question source and JSON upload
+    const questionSource = document.getElementById('question-source');
+    if (questionSource) {
+      questionSource.addEventListener('change', (e) => this.toggleQuestionSource(e));
+    }
+
+    // JSON file upload - THIS WAS MISSING!
+    const jsonFileInput = document.getElementById('json-file');
+    if (jsonFileInput) {
+      jsonFileInput.addEventListener('change', (e) => this.handleJSONUpload(e));
+    } else {
+      console.warn('JSON file input element not found');
+    }
+
+    // Download example JSON button
+    const downloadExampleBtn = document.getElementById('download-example-btn');
+    if (downloadExampleBtn) {
+      downloadExampleBtn.addEventListener('click', () => this.downloadExampleJSON());
     }
   }
 
-  // Bind result view events
-  bindResultEvents() {
-    const elements = {
-      'review-answers-btn': () => this.showReviewAnswers(),
-      'view-solutions-btn': () => this.showReviewAnswers(),
-      'export-results-btn': () => this.exportResults(),
-      'new-test-btn': () => this.startNewTest()
-    };
+  // Setup test view event listeners
+  setupTestEventListeners() {
+    // Navigation buttons
+    const prevBtn = document.getElementById('prev-btn');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => this.testManager.previousQuestion());
+    }
 
-    this.bindElements(elements, 'click');
+    const nextBtn = document.getElementById('next-btn');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => this.testManager.nextQuestion());
+    }
+
+    // Bookmark button
+    const bookmarkBtn = document.getElementById('bookmark-btn');
+    if (bookmarkBtn) {
+      bookmarkBtn.addEventListener('click', () => this.testManager.toggleBookmark());
+    }
+
+    // Clear answer button
+    const clearBtn = document.getElementById('clear-answer-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => this.testManager.clearAnswer());
+    }
+
+    // Review panel buttons
+    const reviewBtn = document.getElementById('review-btn');
+    if (reviewBtn) {
+      reviewBtn.addEventListener('click', () => this.testManager.showReviewPanel());
+    }
+
+    const closeReviewBtn = document.getElementById('close-review-btn');
+    if (closeReviewBtn) {
+      closeReviewBtn.addEventListener('click', () => this.testManager.hideReviewPanel());
+    }
+
+    // Submit test button
+    const submitBtn = document.getElementById('submit-test-btn');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', () => this.testManager.submitTest());
+    }
   }
 
-  // Bind review answers events
-  bindReviewAnswersEvents() {
-    const elements = {
-      'back-to-results-btn': () => this.showResults(),
-      'review-prev-btn': () => this.navigateReview(-1),
-      'review-next-btn': () => this.navigateReview(1)
-    };
+  // Setup result view event listeners
+  setupResultEventListeners() {
+    // Review answers button
+    const reviewAnswersBtn = document.getElementById('review-answers-btn');
+    if (reviewAnswersBtn) {
+      reviewAnswersBtn.addEventListener('click', () => this.viewManager.showView('review-answers'));
+    }
 
-    this.bindElements(elements, 'click');
+    // Restart test button
+    const restartBtn = document.getElementById('restart-test-btn');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => this.restartTest());
+    }
+
+    // Export results button
+    const exportBtn = document.getElementById('export-results-btn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => this.exportResults());
+    }
+
+    // Back to home button
+    const backHomeBtn = document.getElementById('back-home-btn');
+    if (backHomeBtn) {
+      backHomeBtn.addEventListener('click', () => this.backToHome());
+    }
   }
 
-  // Bind keyboard events
-  bindKeyboardEvents() {
-    Utils.addEventListener(document, 'keydown', (e) => this.handleKeyboard(e));
-  }
-
-  // Helper method to bind multiple elements
-  bindElements(elements, defaultEventType = null) {
-    Object.entries(elements).forEach(([id, handler]) => {
-      const element = document.getElementById(id);
-      if (element) {
-        const eventType = defaultEventType || 
-                         (element.type === 'file' ? 'change' :
-                          element.tagName === 'SELECT' ? 'change' :
-                          element.type === 'checkbox' ? 'change' : 'click');
-        Utils.addEventListener(element, eventType, handler);
+  // Setup global event listeners
+  setupGlobalEventListeners() {
+    // Window beforeunload for auto-save
+    window.addEventListener('beforeunload', (e) => {
+      const state = this.stateManager.getState();
+      if (state.testStart && !state.testEnd) {
+        e.preventDefault();
+        e.returnValue = 'You have a test in progress. Are you sure you want to leave?';
+        return e.returnValue;
       }
     });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
   }
 
-  // Landing view methods
-  startTest() {
-    try {
-      this.stateManager.setTestStart();
-      this.stateManager.setCurrentQuestion(0);
-      
-      this.viewManager.showView('test');
-      this.testManager.startMainTimer();
-      this.testManager.startAutoSave();
-      this.testManager.displayQuestion();
-    } catch (error) {
-      console.error('Start test error:', error);
-      Utils.showError('Failed to start test');
-    }
-  }
-
-  resumeTest() {
-    try {
-      this.viewManager.showView('test');
-      this.testManager.startMainTimer();
-      this.testManager.startAutoSave();
-      this.testManager.displayQuestion();
-    } catch (error) {
-      console.error('Resume test error:', error);
-      Utils.showError('Failed to resume test');
-    }
-  }
-
-  resetTest() {
-    if (confirm('Are you sure you want to reset your test progress? This cannot be undone.')) {
-      try {
-        this.stateManager.resetState();
-        location.reload();
-      } catch (error) {
-        console.error('Reset test error:', error);
-        Utils.showError('Failed to reset test');
+  // Handle keyboard shortcuts
+  handleKeyboardShortcuts(event) {
+    const currentView = this.viewManager.getCurrentView();
+    
+    if (currentView === 'test') {
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          this.testManager.previousQuestion();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          this.testManager.nextQuestion();
+          break;
+        case 'b':
+        case 'B':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            this.testManager.toggleBookmark();
+          }
+          break;
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            const optionIndex = parseInt(event.key) - 1;
+            this.testManager.selectOption(optionIndex);
+          }
+          break;
       }
     }
   }
 
-  // Settings management
-  updateTestDuration() {
+  // Start new test
+  startTest() {
     try {
-      const durationSelect = document.getElementById('test-duration');
+      const state = this.stateManager.getState();
+      
+      // Validate custom duration if selected
+      if (state.testDuration === 'custom') {
+        if (!this.validateCustomDuration()) {
+          return;
+        }
+      }
+
+      // Initialize test state
+      this.stateManager.startTest();
+      
+      // Start timers and auto-save
+      this.testManager.startMainTimer();
+      this.testManager.startAutoSave();
+      
+      // Show test view and display first question
+      this.viewManager.showView('test');
+      this.testManager.displayQuestion();
+      
+    } catch (error) {
+      console.error('Start test error:', error);
+      this.showError('Failed to start test');
+    }
+  }
+
+  // Resume existing test
+  resumeTest() {
+    try {
+      // Resume timers
+      this.testManager.startMainTimer();
+      this.testManager.startAutoSave();
+      
+      // Show test view and current question
+      this.viewManager.showView('test');
+      this.testManager.displayQuestion();
+      
+    } catch (error) {
+      console.error('Resume test error:', error);
+      this.showError('Failed to resume test');
+    }
+  }
+
+  // Reset test data
+  resetTest() {
+    if (!confirm('Are you sure you want to reset all test data? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      this.stateManager.resetState();
+      this.viewManager.showView('landing');
+      this.updateUI();
+    } catch (error) {
+      console.error('Reset test error:', error);
+      this.showError('Failed to reset test');
+    }
+  }
+
+  // Restart test (from results)
+  restartTest() {
+    if (!confirm('Are you sure you want to start a new test? This will reset all data.')) {
+      return;
+    }
+    
+    try {
+      this.stateManager.resetState();
+      this.viewManager.showView('landing');
+      this.updateUI();
+    } catch (error) {
+      console.error('Restart test error:', error);
+      this.showError('Failed to restart test');
+    }
+  }
+
+  // Back to home
+  backToHome() {
+    try {
+      this.viewManager.showView('landing');
+      this.updateUI();
+    } catch (error) {
+      console.error('Back to home error:', error);
+    }
+  }
+
+  // Update test duration
+  updateTestDuration(event) {
+    try {
+      const value = event.target.value;
       const customSection = document.getElementById('custom-duration-section');
       
-      if (durationSelect.value === 'custom') {
+      if (value === 'custom') {
         customSection.classList.remove('hidden');
-        const customDuration = this.getCustomDuration();
-        if (customDuration > 0) {
-          this.stateManager.updateState({ testDuration: customDuration });
-        }
+        this.validateCustomDuration();
       } else {
         customSection.classList.add('hidden');
-        this.stateManager.updateState({ testDuration: parseInt(durationSelect.value) });
+        this.stateManager.updateState({ testDuration: parseInt(value) });
       }
     } catch (error) {
       console.error('Update test duration error:', error);
     }
   }
 
-  getCustomDuration() {
-    try {
-      const minutes = parseInt(document.getElementById('custom-minutes').value) || 0;
-      const seconds = parseInt(document.getElementById('custom-seconds').value) || 0;
-      return Utils.convertToTotalMinutes(minutes, seconds);
-    } catch (error) {
-      console.error('Get custom duration error:', error);
-      return 0;
-    }
-  }
-
+  // Validate custom duration inputs
   validateCustomDuration() {
     try {
       const minutesInput = document.getElementById('custom-minutes');
       const secondsInput = document.getElementById('custom-seconds');
+      const startBtn = document.getElementById('start-test-btn');
+      
       const minutes = parseInt(minutesInput.value) || 0;
       const seconds = parseInt(secondsInput.value) || 0;
       
       const validation = Utils.validateCustomDuration(minutes, seconds);
       
+      // Update input validation states
       minutesInput.classList.toggle('invalid', !validation.minutes);
       secondsInput.classList.toggle('invalid', !validation.seconds);
       
       if (validation.isValid) {
-        const customDuration = Utils.convertToTotalMinutes(minutes, seconds);
-        if (document.getElementById('test-duration').value === 'custom') {
-          this.stateManager.updateState({ testDuration: customDuration });
-        }
+        const totalMinutes = Utils.convertToTotalMinutes(minutes, seconds);
+        this.stateManager.updateState({ testDuration: totalMinutes });
+        
+        if (startBtn) startBtn.disabled = false;
+        return true;
+      } else {
+        if (startBtn) startBtn.disabled = true;
+        return false;
       }
     } catch (error) {
       console.error('Validate custom duration error:', error);
+      return false;
     }
   }
 
-  toggleRRBMode() {
+  // Toggle RRB mode
+  toggleRRBMode(event) {
     try {
-      const isRRBMode = document.getElementById('rrb-mode').checked;
+      const isRRBMode = event.target.checked;
+      this.stateManager.updateState({ isRRBMode });
+      
+      // Apply RRB theme
       if (isRRBMode) {
-        document.getElementById('test-duration').value = 90;
-        this.stateManager.updateState({ testDuration: 90, isRRBMode: true });
         document.body.setAttribute('data-rrb-mode', 'true');
       } else {
         document.body.removeAttribute('data-rrb-mode');
-        this.stateManager.updateState({ isRRBMode: false });
       }
     } catch (error) {
       console.error('Toggle RRB mode error:', error);
     }
   }
 
-  toggleDarkMode() {
+  // Toggle dark mode
+  toggleDarkMode(event) {
     try {
-      const isDarkMode = document.getElementById('dark-mode').checked;
+      const isDarkMode = event.target.checked;
       this.stateManager.updateState({ isDarkMode });
-      document.body.setAttribute('data-color-scheme', isDarkMode ? 'dark' : 'light');
+      
+      // Apply dark theme
+      if (isDarkMode) {
+        document.body.setAttribute('data-color-scheme', 'dark');
+      } else {
+        document.body.removeAttribute('data-color-scheme');
+      }
     } catch (error) {
       console.error('Toggle dark mode error:', error);
     }
   }
 
-  toggleEnhancedTimer() {
+  // Toggle enhanced timer
+  toggleEnhancedTimer(event) {
     try {
-      const enhancedTimer = document.getElementById('enhanced-timer').checked;
+      const enhancedTimer = event.target.checked;
       this.stateManager.updateState({ enhancedTimer });
     } catch (error) {
       console.error('Toggle enhanced timer error:', error);
     }
   }
 
-  toggleQuestionSource() {
+  // Toggle question source
+  toggleQuestionSource(event) {
     try {
-      const questionSource = document.getElementById('question-source').value;
+      const questionSource = event.target.value;
       this.stateManager.updateState({ questionSource });
+      
+      // Show/hide JSON upload section
       this.viewManager.toggleQuestionSourceSection(questionSource);
+      
+      // Reset custom questions if switching away from JSON
+      if (questionSource !== 'json') {
+        this.stateManager.updateState({ customQuestions: null });
+        
+        // Clear file input
+        const jsonFileInput = document.getElementById('json-file');
+        if (jsonFileInput) {
+          jsonFileInput.value = '';
+        }
+        
+        // Hide status
+        const statusElement = document.getElementById('json-status');
+        if (statusElement) {
+          statusElement.classList.add('hidden');
+        }
+      }
+      
+      // Update question count display
+      this.viewManager.updateQuestionCount(this.stateManager.getState());
     } catch (error) {
       console.error('Toggle question source error:', error);
     }
   }
 
+  // Handle JSON file upload
   async handleJSONUpload(event) {
     const file = event.target.files[0];
     const statusElement = document.getElementById('json-status');
     
     if (!file) {
-      statusElement.classList.add('hidden');
+      if (statusElement) {
+        statusElement.classList.add('hidden');
+      }
       return;
     }
-    
+
     try {
-      statusElement.classList.remove('hidden', 'success', 'error');
-      statusElement.innerHTML = '<div>Processing JSON file...</div>';
-      
+      if (statusElement) {
+        statusElement.classList.remove('hidden', 'success', 'error');
+        statusElement.innerHTML = '<div class="loading">Processing JSON file...</div>';
+      }
+
       const result = await this.questionManager.loadFromFile(file);
-      
+
       if (result.success) {
         this.stateManager.setCustomQuestions(result.questions);
-        
-        statusElement.classList.add('success');
-        statusElement.innerHTML = `<div>✅ Successfully loaded ${result.count} questions from JSON file</div>`;
-        
+
+        if (statusElement) {
+          statusElement.classList.add('success');
+          statusElement.innerHTML = `<div>✅ Successfully loaded ${result.count} questions from JSON file</div>`;
+        }
+
         this.viewManager.updateQuestionCount(this.stateManager.getState());
       }
     } catch (error) {
-      statusElement.classList.add('error');
-      statusElement.innerHTML = `
-        <div>❌ Failed to load JSON file:</div>
-        <ul><li>${error.error || error.message}</li></ul>
-      `;
+      console.error('JSON upload error:', error);
       
+      if (statusElement) {
+        statusElement.classList.add('error');
+        statusElement.innerHTML = `
+          <div>❌ Failed to load JSON file:</div>
+          <ul><li>${error.error || error.message}</li></ul>
+        `;
+      }
+
       // Reset to default questions
       this.stateManager.updateState({ questionSource: 'default', customQuestions: null });
-      document.getElementById('question-source').value = 'default';
+      const questionSourceSelect = document.getElementById('question-source');
+      if (questionSourceSelect) {
+        questionSourceSelect.value = 'default';
+      }
       this.viewManager.updateQuestionCount(this.stateManager.getState());
     }
   }
 
+  // Download example JSON
   downloadExampleJSON() {
     try {
       const exampleData = this.questionManager.getExampleJSON();
       Utils.exportJSON(exampleData, 'example-questions.json');
     } catch (error) {
       console.error('Download example JSON error:', error);
-      Utils.showError('Failed to download example JSON');
+      this.showError('Failed to download example JSON');
     }
   }
 
-  // Keyboard handling
-  handleKeyboard(e) {
-    if (this.viewManager.getCurrentView() !== 'test') return;
-    
-    switch(e.key) {
-      case 'ArrowLeft':
-        e.preventDefault();
-        this.testManager.navigateQuestion(-1);
-        break;
-      case 'ArrowRight':
-      case 'Enter':
-        e.preventDefault();
-        this.testManager.navigateQuestion(1);
-        break;
-      case 'b':
-      case 'B':
-        e.preventDefault();
-        this.testManager.toggleBookmark();
-        break;
-      case 'c':
-      case 'C':
-        e.preventDefault();
-        this.testManager.clearAnswer();
-        break;
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-        e.preventDefault();
-        this.testManager.selectOption(parseInt(e.key) - 1);
-        break;
-    }
-  }
-
-  // Result and review methods
-  showReviewAnswers() {
-    try {
-      this.stateManager.updateState({ reviewCurrentQ: 0 });
-      this.viewManager.showView('review-answers');
-      this.displayReviewQuestion();
-    } catch (error) {
-      console.error('Show review answers error:', error);
-      Utils.showError('Failed to show review answers');
-    }
-  }
-
-  // Display current review question
-  displayReviewQuestion() {
-    try {
-      const state = this.stateManager.getState();
-      const qIndex = state.reviewCurrentQ;
-      const currentQuestions = this.getCurrentQuestions();
-      const question = currentQuestions[qIndex];
-      const result = state.results.questionResults[qIndex];
-      
-      // Update question count and content
-      this.viewManager.updateElement('review-q-num', qIndex + 1);
-      this.viewManager.updateElement('review-question-text', question.question);
-      
-      // User answer
-      const userAnswerText = result.userAnswer !== null 
-        ? question.options[result.userAnswer] 
-        : 'Not answered';
-      const userAnswerDisplay = document.getElementById('user-answer-display');
-      if (userAnswerDisplay) {
-        userAnswerDisplay.textContent = userAnswerText;
-        userAnswerDisplay.className = `answer-display ${result.status}-status`;
-      }
-      
-      // Correct answer
-      const correctAnswerDisplay = document.getElementById('correct-answer-display');
-      if (correctAnswerDisplay) {
-        correctAnswerDisplay.textContent = question.options[question.correctIndex];
-        correctAnswerDisplay.className = 'answer-display correct-status';
-      }
-      
-      // Solution
-      this.viewManager.updateElement('solution-text', question.solution);
-      
-      // Stats
-      this.viewManager.updateElement('question-time-spent', Utils.formatTime(result.timeSpent * 1000));
-      const statusDisplay = document.getElementById('question-status-display');
-      if (statusDisplay) {
-        statusDisplay.textContent = result.status.charAt(0).toUpperCase() + result.status.slice(1);
-        statusDisplay.className = `stat-value ${result.status}-status`;
-      }
-      
-      // Navigation
-      const totalQuestions = currentQuestions.length;
-      const prevBtn = document.getElementById('review-prev-btn');
-      const nextBtn = document.getElementById('review-next-btn');
-      
-      if (prevBtn) prevBtn.disabled = qIndex === 0;
-      if (nextBtn) nextBtn.disabled = qIndex === totalQuestions - 1;
-      
-      // Update question count in header
-      const questionNumberElement = document.querySelector('#review-answers-view .question-number');
-      if (questionNumberElement) {
-        questionNumberElement.innerHTML = `Question <span id="review-q-num">${qIndex + 1}</span> of ${totalQuestions}`;
-      }
-    } catch (error) {
-      console.error('Display review question error:', error);
-    }
-  }
-
-  // Get current questions (helper method)
-  getCurrentQuestions() {
-    const state = this.stateManager.getState();
-    return state.customQuestions || DEFAULT_QUESTIONS || [];
-  }
-
-  navigateReview(direction) {
-    try {
-      const state = this.stateManager.getState();
-      const currentQuestions = this.getCurrentQuestions();
-      const newQ = state.reviewCurrentQ + direction;
-      
-      if (newQ >= 0 && newQ < currentQuestions.length) {
-        this.stateManager.updateState({ reviewCurrentQ: newQ });
-        this.displayReviewQuestion();
-      }
-    } catch (error) {
-      console.error('Navigate review error:', error);
-    }
-  }
-
+  // Export test results
   exportResults() {
     try {
       const state = this.stateManager.getState();
+      const results = this.stateManager.getResults();
+      
       const exportData = {
         testInfo: {
           date: new Date(state.testStart).toISOString(),
           duration: state.testDuration,
-          mode: state.isRRBMode ? 'RRB' : 'Standard'
+          mode: state.isRRBMode ? 'RRB' : 'Standard',
+          questionSource: state.questionSource
         },
-        results: state.results,
+        results: results,
         answers: state.answers,
-        timeSpent: state.timeSpent
+        timeSpent: state.timeSpent,
+        bookmarked: state.bookmarked
       };
       
-      const filename = `RRB_Mock_Test_Results_${new Date().toISOString().split('T')[0]}.json`;
+      const filename = `Units_Measurements_Test_Results_${new Date().toISOString().split('T')[0]}.json`;
       Utils.exportJSON(exportData, filename);
     } catch (error) {
       console.error('Export results error:', error);
-      Utils.showError('Failed to export results');
+      this.showError('Failed to export results');
     }
   }
 
-  startNewTest() {
-    if (confirm('Start a new test? This will clear your current results.')) {
-      try {
-        this.stateManager.resetState();
-        location.reload();
-      } catch (error) {
-        console.error('Start new test error:', error);
-        Utils.showError('Failed to start new test');
-      }
+  // Update UI based on current state
+  updateUI() {
+    try {
+      const state = this.stateManager.getState();
+      this.viewManager.updateLandingView(state);
+    } catch (error) {
+      console.error('Update UI error:', error);
     }
   }
 
-  showResults() {
-    this.viewManager.showView('result');
+  // Show error message
+  showError(message) {
+    // Simple error display - you can enhance this
+    alert(message);
+    console.error(message);
+  }
+
+  // Get current questions
+  getCurrentQuestions() {
+    const state = this.stateManager.getState();
+    return state.customQuestions || window.DEFAULT_QUESTIONS || [];
   }
 }
 
-// Initialize the application when DOM is ready
-document.addEventListener('DOMContentLoaded', async function() {
-  try {
-    const app = new MockTestApp();
-    await app.init();
-    
-    // Make app globally available for debugging
-    window.mockTestApp = app;
-  } catch (error) {
-    console.error('Failed to initialize application:', error);
-    Utils.showError('Application failed to load. Please refresh the page.');
-  }
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  window.app = new MockTestApp();
+  window.app.init().catch(error => {
+    console.error('Failed to initialize app:', error);
+  });
 });
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = MockTestApp;
+}
