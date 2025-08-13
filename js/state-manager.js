@@ -43,19 +43,99 @@ class StateManager {
       const saved = localStorage.getItem(this.storageKey);
       if (saved) {
         const loadedState = JSON.parse(saved);
-        this.state = { ...this.state, ...loadedState };
+        
+        // Validate loaded state structure
+        if (this.validateState(loadedState)) {
+          this.state = { ...this.state, ...loadedState };
+          console.log('State loaded successfully from localStorage');
+        } else {
+          console.warn('Invalid state structure in localStorage, using defaults');
+          this.resetInvalidState();
+        }
       }
     } catch (error) {
       console.error('Load state error:', error);
+      console.warn('Failed to load state, using defaults');
+      this.resetInvalidState();
     }
   }
 
   // Save state to localStorage
   saveState() {
     try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.state));
+      // Validate state before saving
+      if (this.validateState(this.state)) {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.state));
+      } else {
+        console.error('Invalid state, not saving to localStorage');
+      }
     } catch (error) {
       console.error('Save state error:', error);
+      
+      // Try to recover storage space if quota exceeded
+      if (error.name === 'QuotaExceededError') {
+        this.handleStorageQuotaExceeded();
+      }
+    }
+  }
+
+  // Validate state structure
+  validateState(state) {
+    if (!state || typeof state !== 'object') {
+      return false;
+    }
+    
+    // Check required properties
+    const requiredProps = ['answers', 'bookmarked', 'timeSpent', 'currentQ', 'testDuration'];
+    for (const prop of requiredProps) {
+      if (!(prop in state)) {
+        return false;
+      }
+    }
+    
+    // Check array properties
+    if (!Array.isArray(state.answers) || !Array.isArray(state.bookmarked) || !Array.isArray(state.timeSpent)) {
+      return false;
+    }
+    
+    // Check numeric properties
+    if (typeof state.currentQ !== 'number' || typeof state.testDuration !== 'number') {
+      return false;
+    }
+    
+    return true;
+  }
+
+  // Reset invalid state
+  resetInvalidState() {
+    try {
+      localStorage.removeItem(this.storageKey);
+      this.state = this.getInitialState();
+    } catch (error) {
+      console.error('Reset invalid state error:', error);
+    }
+  }
+
+  // Handle storage quota exceeded
+  handleStorageQuotaExceeded() {
+    try {
+      console.warn('Storage quota exceeded, attempting cleanup');
+      
+      // Keep only essential state
+      const essentialState = {
+        answers: this.state.answers,
+        bookmarked: this.state.bookmarked,
+        timeSpent: this.state.timeSpent,
+        currentQ: this.state.currentQ,
+        testStart: this.state.testStart,
+        testEnd: this.state.testEnd,
+        testDuration: this.state.testDuration
+      };
+      
+      localStorage.setItem(this.storageKey, JSON.stringify(essentialState));
+      console.log('Essential state saved after cleanup');
+    } catch (error) {
+      console.error('Storage cleanup failed:', error);
     }
   }
 
