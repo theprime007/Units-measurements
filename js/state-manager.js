@@ -7,6 +7,17 @@ class StateManager {
     this.storageKey = 'dimensionalMockState';
   }
 
+  // Initialize state manager - load from localStorage
+  async init() {
+    try {
+      this.loadState();
+      console.log('StateManager initialized successfully');
+    } catch (error) {
+      console.error('StateManager initialization error:', error);
+      throw error;
+    }
+  }
+
   getInitialState() {
     return {
       answers: Array(50).fill(null),
@@ -140,6 +151,12 @@ class StateManager {
       timeSpent: Array(questionCount).fill(0),
       currentQ: 0
     });
+  }
+
+  // Start a new test
+  startTest() {
+    this.setTestStart();
+    this.updateState({ currentQ: 0 });
   }
 
   // Utility methods

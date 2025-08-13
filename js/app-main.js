@@ -47,6 +47,9 @@ class MockTestApp {
       // Result view event listeners
       this.setupResultEventListeners();
       
+      // Review answers view event listeners
+      this.setupReviewAnswersEventListeners();
+      
       // Global event listeners
       this.setupGlobalEventListeners();
     } catch (error) {
@@ -175,7 +178,10 @@ class MockTestApp {
     // Review answers button
     const reviewAnswersBtn = document.getElementById('review-answers-btn');
     if (reviewAnswersBtn) {
-      reviewAnswersBtn.addEventListener('click', () => this.viewManager.showView('review-answers'));
+      reviewAnswersBtn.addEventListener('click', () => {
+        this.testManager.initializeReview();
+        this.viewManager.showView('review-answers');
+      });
     }
 
     // Restart test button
@@ -194,6 +200,26 @@ class MockTestApp {
     const backHomeBtn = document.getElementById('back-home-btn');
     if (backHomeBtn) {
       backHomeBtn.addEventListener('click', () => this.backToHome());
+    }
+  }
+
+  // Setup review answers view event listeners
+  setupReviewAnswersEventListeners() {
+    // Back to results button
+    const backToResultsBtn = document.getElementById('back-to-results-btn');
+    if (backToResultsBtn) {
+      backToResultsBtn.addEventListener('click', () => this.viewManager.showView('result'));
+    }
+
+    // Review navigation buttons
+    const reviewPrevBtn = document.getElementById('review-prev-btn');
+    if (reviewPrevBtn) {
+      reviewPrevBtn.addEventListener('click', () => this.navigateReview(-1));
+    }
+
+    const reviewNextBtn = document.getElementById('review-next-btn');
+    if (reviewNextBtn) {
+      reviewNextBtn.addEventListener('click', () => this.navigateReview(1));
     }
   }
 
@@ -333,6 +359,106 @@ class MockTestApp {
       this.updateUI();
     } catch (error) {
       console.error('Back to home error:', error);
+    }
+  }
+
+  // Navigate review answers
+  navigateReview(direction) {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      const currentReviewQ = state.reviewCurrentQ || 0;
+      const newReviewQ = currentReviewQ + direction;
+      
+      if (newReviewQ >= 0 && newReviewQ < currentQuestions.length) {
+        this.stateManager.updateState({ reviewCurrentQ: newReviewQ });
+        this.updateReviewDisplay(newReviewQ);
+      }
+    } catch (error) {
+      console.error('Navigate review error:', error);
+    }
+  }
+
+  // Update review display for current question
+  updateReviewDisplay(questionIndex) {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      const results = this.stateManager.getResults();
+      
+      if (!results || !currentQuestions[questionIndex]) return;
+      
+      const question = currentQuestions[questionIndex];
+      const userAnswer = state.answers[questionIndex];
+      const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+      const timeSpent = state.timeSpent[questionIndex] || 0;
+      
+      // Update question number
+      const reviewQNum = document.getElementById('review-q-num');
+      if (reviewQNum) {
+        reviewQNum.textContent = questionIndex + 1;
+      }
+      
+      // Update question text
+      const reviewQuestionText = document.getElementById('review-question-text');
+      if (reviewQuestionText) {
+        reviewQuestionText.textContent = question.question;
+      }
+      
+      // Update user answer display
+      const userAnswerDisplay = document.getElementById('user-answer-display');
+      if (userAnswerDisplay) {
+        if (userAnswer !== null) {
+          userAnswerDisplay.textContent = question.options[userAnswer];
+          userAnswerDisplay.className = `answer-display ${isCorrect ? 'correct' : 'incorrect'}`;
+        } else {
+          userAnswerDisplay.textContent = 'Not Answered';
+          userAnswerDisplay.className = 'answer-display not-answered';
+        }
+      }
+      
+      // Update correct answer display
+      const correctAnswerDisplay = document.getElementById('correct-answer-display');
+      if (correctAnswerDisplay) {
+        correctAnswerDisplay.textContent = question.options[question.correctIndex];
+        correctAnswerDisplay.className = 'answer-display';
+      }
+      
+      // Update solution
+      const solutionText = document.getElementById('solution-text');
+      if (solutionText) {
+        solutionText.textContent = question.solution || 'Solution not available for this question.';
+      }
+      
+      // Update time spent
+      const questionTimeSpent = document.getElementById('question-time-spent');
+      if (questionTimeSpent) {
+        questionTimeSpent.textContent = this.testManager.formatTime(timeSpent * 1000);
+      }
+      
+      // Update status
+      const questionStatusDisplay = document.getElementById('question-status-display');
+      if (questionStatusDisplay) {
+        const status = userAnswer === null ? 'Not Answered' : (isCorrect ? 'Correct' : 'Incorrect');
+        questionStatusDisplay.textContent = status;
+        questionStatusDisplay.className = `stat-value ${status.toLowerCase().replace(' ', '')}`;
+      }
+      
+      // Update navigation buttons
+      const reviewPrevBtn = document.getElementById('review-prev-btn');
+      const reviewNextBtn = document.getElementById('review-next-btn');
+      
+      if (reviewPrevBtn) {
+        reviewPrevBtn.disabled = questionIndex === 0;
+      }
+      
+      if (reviewNextBtn) {
+        reviewNextBtn.disabled = questionIndex === currentQuestions.length - 1;
+        reviewNextBtn.textContent = questionIndex === currentQuestions.length - 1 ? 'Last Question' : 'Next →';
+      }
+      
+    } catch (error) {
+      console.error('Update review display error:', error);
     }
   }
 
