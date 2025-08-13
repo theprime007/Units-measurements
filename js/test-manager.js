@@ -14,11 +14,80 @@ class TestManager {
     this.autoSaveInterval = null;
     this.customMainTimer = null;
     this.customQuestionTimer = null;
+    
+    // Timer DOM elements cache
+    this.timerElements = {};
+  }
+
+  // Initialize timer elements and cache them
+  initializeTimerElements() {
+    try {
+      this.timerElements = {
+        mainTimer: document.getElementById('main-timer'),
+        mainTimerProgress: document.getElementById('main-timer-progress'),
+        questionTimer: document.getElementById('question-timer'),
+        questionTimerProgress: document.getElementById('question-timer-progress')
+      };
+      
+      // Create timer elements if they don't exist
+      this.ensureTimerElementsExist();
+    } catch (error) {
+      console.error('Initialize timer elements error:', error);
+    }
+  }
+
+  // Ensure timer elements exist in DOM
+  ensureTimerElementsExist() {
+    const testView = document.getElementById('test-view');
+    if (!testView) return;
+
+    // Create main timer if it doesn't exist
+    if (!this.timerElements.mainTimer) {
+      const timerContainer = testView.querySelector('.timer-section') || testView.querySelector('.test-header');
+      if (timerContainer) {
+        const mainTimerDiv = document.createElement('div');
+        mainTimerDiv.className = 'main-timer-container';
+        mainTimerDiv.innerHTML = `
+          <div class="timer-display">
+            <span class="timer-label">Time Remaining:</span>
+            <span id="main-timer" class="timer-value">00:00</span>
+          </div>
+          <div id="main-timer-progress" class="timer-progress hidden">
+            <div class="progress-bar"></div>
+          </div>
+        `;
+        timerContainer.appendChild(mainTimerDiv);
+        this.timerElements.mainTimer = document.getElementById('main-timer');
+        this.timerElements.mainTimerProgress = document.getElementById('main-timer-progress');
+      }
+    }
+
+    // Create question timer if it doesn't exist
+    if (!this.timerElements.questionTimer) {
+      const questionContainer = testView.querySelector('.question-container') || testView.querySelector('.question-section');
+      if (questionContainer) {
+        const questionTimerDiv = document.createElement('div');
+        questionTimerDiv.className = 'question-timer-container';
+        questionTimerDiv.innerHTML = `
+          <div class="timer-display">
+            <span class="timer-label">Question Time:</span>
+            <span id="question-timer" class="timer-value">00:00</span>
+          </div>
+          <div id="question-timer-progress" class="timer-progress hidden">
+            <div class="progress-bar"></div>
+          </div>
+        `;
+        questionContainer.insertBefore(questionTimerDiv, questionContainer.firstChild);
+        this.timerElements.questionTimer = document.getElementById('question-timer');
+        this.timerElements.questionTimerProgress = document.getElementById('question-timer-progress');
+      }
+    }
   }
 
   // Start test timer
   startMainTimer() {
     try {
+      this.initializeTimerElements();
       const state = this.stateManager.getState();
       if (state.enhancedTimer) {
         this.startEnhancedMainTimer();
@@ -37,25 +106,85 @@ class TestManager {
     }
     
     const state = this.stateManager.getState();
-    const timerElement = document.getElementById('main-timer');
-    const progressElement = document.getElementById('main-timer-progress');
+    const timerElement = this.timerElements.mainTimer;
+    const progressElement = this.timerElements.mainTimerProgress;
     
-    progressElement.classList.remove('hidden');
+    if (!timerElement) {
+      console.warn('Main timer element not found, falling back to basic timer');
+      this.startBasicMainTimer();
+      return;
+    }
     
-    this.customMainTimer = new CustomTimer({
-      duration: state.testDuration,
-      element: timerElement,
-      progressElement: progressElement,
-      audioAlert: true,
-      visualAlert: true,
-      warningThresholds: [10, 5, 2],
-      onComplete: () => this.submitTest(),
-      onWarning: (threshold) => {
-        console.log(`Timer warning: ${threshold} minutes remaining`);
+    if (progressElement) {
+      progressElement.classList.remove('hidden');
+    }
+    
+    // Use a simple enhanced timer if CustomTimer is not available
+    if (typeof CustomTimer !== 'undefined') {
+      this.customMainTimer = new CustomTimer({
+        duration: state.testDuration,
+        element: timerElement,
+        progressElement: progressElement,
+        audioAlert: true,
+        visualAlert: true,
+        warningThresholds: [10, 5, 2],
+        onComplete: () => this.submitTest(),
+        onWarning: (threshold) => {
+          console.log(`Timer warning: ${threshold} minutes remaining`);
+        }
+      });
+      
+      this.customMainTimer.start();
+    } else {
+      // Fallback to basic timer with enhanced features
+      this.startEnhancedBasicMainTimer();
+    }
+  }
+
+  // Enhanced basic main timer (fallback)
+  startEnhancedBasicMainTimer() {
+    if (this.mainTimer) clearInterval(this.mainTimer);
+    
+    const state = this.stateManager.getState();
+    const timerElement = this.timerElements.mainTimer;
+    const progressElement = this.timerElements.mainTimerProgress;
+    const totalDuration = state.testDuration * 60 * 1000;
+    
+    if (progressElement) {
+      progressElement.classList.remove('hidden');
+    }
+    
+    this.mainTimer = setInterval(() => {
+      const elapsed = Date.now() - state.testStart;
+      const remaining = totalDuration - elapsed;
+      
+      if (remaining <= 0) {
+        this.submitTest();
+        return;
       }
-    });
-    
-    this.customMainTimer.start();
+      
+      const timeString = this.formatTime(remaining);
+      if (timerElement) {
+        timerElement.textContent = timeString;
+        
+        // Add warning classes
+        timerElement.classList.remove('warning', 'danger');
+        if (remaining < 5 * 60 * 1000) {
+          timerElement.classList.add('danger');
+        } else if (remaining < 10 * 60 * 1000) {
+          timerElement.classList.add('warning');
+        }
+      }
+      
+      // Update progress bar
+      if (progressElement) {
+        const progressBar = progressElement.querySelector('.progress-bar');
+        if (progressBar) {
+          const percentage = ((totalDuration - remaining) / totalDuration) * 100;
+          progressBar.style.width = `${percentage}%`;
+        }
+      }
+    }, 1000);
   }
 
   // Start basic main timer
@@ -63,6 +192,12 @@ class TestManager {
     if (this.mainTimer) clearInterval(this.mainTimer);
     
     const state = this.stateManager.getState();
+    const timerElement = this.timerElements.mainTimer;
+    
+    if (!timerElement) {
+      console.warn('Main timer element not found');
+      return;
+    }
     
     this.mainTimer = setInterval(() => {
       const elapsed = Date.now() - state.testStart;
@@ -73,18 +208,15 @@ class TestManager {
         return;
       }
       
-      const timeString = Utils.formatTime(remaining);
-      this.viewManager.updateElement('main-timer', timeString);
+      const timeString = this.formatTime(remaining);
+      timerElement.textContent = timeString;
       
       // Add warning classes
-      const timerElement = document.getElementById('main-timer');
-      if (timerElement) {
-        timerElement.classList.remove('warning', 'danger');
-        if (remaining < 5 * 60 * 1000) {
-          timerElement.classList.add('danger');
-        } else if (remaining < 10 * 60 * 1000) {
-          timerElement.classList.add('warning');
-        }
+      timerElement.classList.remove('warning', 'danger');
+      if (remaining < 5 * 60 * 1000) {
+        timerElement.classList.add('danger');
+      } else if (remaining < 10 * 60 * 1000) {
+        timerElement.classList.add('warning');
       }
     }, 1000);
   }
@@ -92,6 +224,7 @@ class TestManager {
   // Start question timer
   startQuestionTimer() {
     try {
+      this.initializeTimerElements();
       const state = this.stateManager.getState();
       if (state.enhancedTimer) {
         this.startEnhancedQuestionTimer();
@@ -109,10 +242,18 @@ class TestManager {
       this.customQuestionTimer.stop();
     }
     
-    const timerElement = document.getElementById('question-timer');
-    const progressElement = document.getElementById('question-timer-progress');
+    const timerElement = this.timerElements.questionTimer;
+    const progressElement = this.timerElements.questionTimerProgress;
     
-    progressElement.classList.remove('hidden');
+    if (!timerElement) {
+      console.warn('Question timer element not found, falling back to basic timer');
+      this.startBasicQuestionTimer();
+      return;
+    }
+    
+    if (progressElement) {
+      progressElement.classList.remove('hidden');
+    }
     
     const currentQuestions = this.getCurrentQuestions();
     const currentQuestion = currentQuestions[this.stateManager.getCurrentQuestion()];
@@ -121,20 +262,72 @@ class TestManager {
     
     this.questionStartTime = Date.now();
     
-    this.customQuestionTimer = new CustomTimer({
-      duration: timeLimit,
-      element: timerElement,
-      progressElement: progressElement,
-      audioAlert: false,
-      visualAlert: true,
-      warningThresholds: [2, 1],
-      onTick: (remaining) => {
-        const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
-        this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsed);
-      }
-    });
+    // Use CustomTimer if available, otherwise fallback
+    if (typeof CustomTimer !== 'undefined') {
+      this.customQuestionTimer = new CustomTimer({
+        duration: timeLimit,
+        element: timerElement,
+        progressElement: progressElement,
+        audioAlert: false,
+        visualAlert: true,
+        warningThresholds: [2, 1],
+        onTick: (remaining) => {
+          const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
+          this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsed);
+        }
+      });
+      
+      this.customQuestionTimer.start();
+    } else {
+      this.startEnhancedBasicQuestionTimer(timeLimit);
+    }
+  }
+
+  // Enhanced basic question timer (fallback)
+  startEnhancedBasicQuestionTimer(timeLimit) {
+    if (this.questionTimer) clearInterval(this.questionTimer);
     
-    this.customQuestionTimer.start();
+    const timerElement = this.timerElements.questionTimer;
+    const progressElement = this.timerElements.questionTimerProgress;
+    const totalDuration = timeLimit * 60 * 1000;
+    
+    this.questionStartTime = Date.now();
+    
+    this.questionTimer = setInterval(() => {
+      const elapsed = Date.now() - this.questionStartTime;
+      const remaining = totalDuration - elapsed;
+      
+      if (timerElement) {
+        if (remaining > 0) {
+          const timeString = this.formatTime(remaining);
+          timerElement.textContent = timeString;
+          
+          // Update warning classes
+          timerElement.classList.remove('warning', 'danger');
+          if (remaining < 1 * 60 * 1000) {
+            timerElement.classList.add('danger');
+          } else if (remaining < 2 * 60 * 1000) {
+            timerElement.classList.add('warning');
+          }
+        } else {
+          timerElement.textContent = 'Time Up!';
+          timerElement.classList.add('danger');
+        }
+      }
+      
+      // Update progress bar
+      if (progressElement && remaining > 0) {
+        const progressBar = progressElement.querySelector('.progress-bar');
+        if (progressBar) {
+          const percentage = ((totalDuration - elapsed) / totalDuration) * 100;
+          progressBar.style.width = `${Math.max(0, percentage)}%`;
+        }
+      }
+      
+      // Update time spent
+      const elapsedSeconds = Math.floor(elapsed / 1000);
+      this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsedSeconds);
+    }, 1000);
   }
 
   // Start basic question timer
@@ -143,10 +336,21 @@ class TestManager {
     
     if (this.questionTimer) clearInterval(this.questionTimer);
     
+    const timerElement = this.timerElements.questionTimer;
+    
+    if (!timerElement) {
+      console.warn('Question timer element not found');
+      return;
+    }
+    
     this.questionTimer = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
-      const timeString = Utils.formatTime(elapsed * 1000);
-      this.viewManager.updateElement('question-timer', timeString);
+      const elapsed = Date.now() - this.questionStartTime;
+      const timeString = this.formatTime(elapsed);
+      timerElement.textContent = timeString;
+      
+      // Update time spent
+      const elapsedSeconds = Math.floor(elapsed / 1000);
+      this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsedSeconds);
     }, 1000);
   }
 
@@ -158,11 +362,16 @@ class TestManager {
       if (state.enhancedTimer && this.customQuestionTimer) {
         this.customQuestionTimer.stop();
         this.customQuestionTimer = null;
-        document.getElementById('question-timer-progress').classList.add('hidden');
+        if (this.timerElements.questionTimerProgress) {
+          this.timerElements.questionTimerProgress.classList.add('hidden');
+        }
       } else {
         if (this.questionTimer) {
           clearInterval(this.questionTimer);
           this.questionTimer = null;
+        }
+        if (this.timerElements.questionTimerProgress) {
+          this.timerElements.questionTimerProgress.classList.add('hidden');
         }
       }
       
@@ -175,6 +384,14 @@ class TestManager {
     } catch (error) {
       console.error('Stop question timer error:', error);
     }
+  }
+
+  // Format time helper function
+  formatTime(milliseconds) {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
 
   // Start auto-save
@@ -190,12 +407,36 @@ class TestManager {
     }
   }
 
+  // Update question display (called when view is activated)
+  updateQuestionDisplay() {
+    try {
+      this.initializeTimerElements();
+      this.displayQuestion();
+    } catch (error) {
+      console.error('Update question display error:', error);
+    }
+  }
+
+  // Initialize review functionality
+  initializeReview() {
+    try {
+      this.populateReviewAnswers();
+    } catch (error) {
+      console.error('Initialize review error:', error);
+    }
+  }
+
   // Display current question
   displayQuestion() {
     try {
       const currentQuestions = this.getCurrentQuestions();
       const currentQ = this.stateManager.getCurrentQuestion();
       const question = currentQuestions[currentQ];
+      
+      if (!question) {
+        console.error('Question not found:', currentQ);
+        return;
+      }
       
       // Stop previous question timer
       this.stopQuestionTimer();
@@ -307,6 +548,16 @@ class TestManager {
     } catch (error) {
       console.error('Navigate question error:', error);
     }
+  }
+
+  // Next question method (for event listeners)
+  nextQuestion() {
+    this.navigateQuestion(1);
+  }
+
+  // Previous question method (for event listeners)
+  previousQuestion() {
+    this.navigateQuestion(-1);
   }
 
   // Toggle bookmark
@@ -423,8 +674,12 @@ class TestManager {
           this.customQuestionTimer = null;
         }
         // Hide progress bars
-        document.getElementById('main-timer-progress').classList.add('hidden');
-        document.getElementById('question-timer-progress').classList.add('hidden');
+        if (this.timerElements.mainTimerProgress) {
+          this.timerElements.mainTimerProgress.classList.add('hidden');
+        }
+        if (this.timerElements.questionTimerProgress) {
+          this.timerElements.questionTimerProgress.classList.add('hidden');
+        }
       } else {
         if (this.mainTimer) clearInterval(this.mainTimer);
       }
@@ -436,7 +691,7 @@ class TestManager {
       this.viewManager.showView('result');
     } catch (error) {
       console.error('Submit test error:', error);
-      Utils.showError('Failed to submit test');
+      alert('Failed to submit test. Please try again.');
     }
   }
 
@@ -461,7 +716,7 @@ class TestManager {
         const question = currentQuestions[i];
         const userAnswer = state.answers[i];
         const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
-        const timeSpent = state.timeSpent[i];
+        const timeSpent = state.timeSpent[i] || 0;
         
         if (isCorrect) results.score++;
         
@@ -515,10 +770,10 @@ class TestManager {
       // Update score display
       this.viewManager.updateElement('score-percentage', `${scorePercentage}%`);
       this.viewManager.updateElement('correct-answers', `${results.score}/${results.totalQuestions}`);
-      this.viewManager.updateElement('total-time', Utils.formatTime(results.totalTime));
+      this.viewManager.updateElement('total-time', this.formatTime(results.totalTime));
       
       const avgTime = Math.round(results.totalTime / results.totalQuestions);
-      this.viewManager.updateElement('avg-time', Utils.formatTime(avgTime));
+      this.viewManager.updateElement('avg-time', this.formatTime(avgTime));
       
       // Setup and draw charts
       this.setupCharts();
@@ -765,7 +1020,7 @@ class TestManager {
           <td>${result.topic}</td>
           <td>${result.difficulty}</td>
           <td class="${result.status}-status">${result.status.charAt(0).toUpperCase() + result.status.slice(1)}</td>
-          <td>${Utils.formatTime(result.timeSpent * 1000)}</td>
+          <td>${this.formatTime(result.timeSpent * 1000)}</td>
         `;
       });
     } catch (error) {
@@ -773,10 +1028,66 @@ class TestManager {
     }
   }
 
+  // Populate review answers for review view
+  populateReviewAnswers() {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      const results = this.stateManager.getResults();
+      
+      if (!results) return;
+      
+      const reviewContainer = document.getElementById('review-answers-container');
+      if (!reviewContainer) return;
+      
+      reviewContainer.innerHTML = '';
+      
+      currentQuestions.forEach((question, index) => {
+        const userAnswer = state.answers[index];
+        const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+        const timeSpent = state.timeSpent[index] || 0;
+        
+        const reviewItem = document.createElement('div');
+        reviewItem.className = `review-answer-item ${isCorrect ? 'correct' : userAnswer !== null ? 'incorrect' : 'unanswered'}`;
+        
+        reviewItem.innerHTML = `
+          <div class="review-question-header">
+            <h3>Question ${index + 1}</h3>
+            <div class="review-badges">
+              <span class="topic-badge">${question.topic}</span>
+              <span class="difficulty-badge ${question.difficulty.toLowerCase()}">${question.difficulty}</span>
+              <span class="status-badge ${isCorrect ? 'correct' : userAnswer !== null ? 'incorrect' : 'unanswered'}">
+                ${userAnswer === null ? 'Not Answered' : isCorrect ? 'Correct' : 'Incorrect'}
+              </span>
+            </div>
+          </div>
+          <div class="review-question-text">${question.question}</div>
+          <div class="review-options">
+            ${question.options.map((option, optIndex) => `
+              <div class="review-option ${userAnswer === optIndex ? 'user-selected' : ''} ${optIndex === question.correctIndex ? 'correct-answer' : ''}">
+                <span class="option-label">${String.fromCharCode(65 + optIndex)}.</span>
+                <span class="option-text">${option}</span>
+                ${userAnswer === optIndex ? '<span class="user-mark">Your Answer</span>' : ''}
+                ${optIndex === question.correctIndex ? '<span class="correct-mark">Correct Answer</span>' : ''}
+              </div>
+            `).join('')}
+          </div>
+          <div class="review-stats">
+            <span class="time-spent">Time: ${this.formatTime(timeSpent * 1000)}</span>
+          </div>
+        `;
+        
+        reviewContainer.appendChild(reviewItem);
+      });
+    } catch (error) {
+      console.error('Populate review answers error:', error);
+    }
+  }
+
   // Get current questions
   getCurrentQuestions() {
     const state = this.stateManager.getState();
-    return state.customQuestions || DEFAULT_QUESTIONS || [];
+    return state.customQuestions || window.DEFAULT_QUESTIONS || [];
   }
 }
 
