@@ -129,6 +129,29 @@ class MockTestApp {
       downloadExampleBtn.addEventListener('click', () => this.downloadExampleJSON());
     }
   }
+  // Dark Mode Toggle Logic
+document.addEventListener("DOMContentLoaded", function() {
+    var darkModeCheckbox = document.getElementById("dark-mode");
+    if (darkModeCheckbox) {
+        // Set initial state from localStorage or system preference
+        if (localStorage.getItem("theme") === "dark" ||
+            (window.matchMedia("(prefers-color-scheme: dark)").matches && !localStorage.getItem("theme"))) {
+            document.body.setAttribute("data-theme", "dark");
+            darkModeCheckbox.checked = true;
+        }
+
+        // Listen for checkbox changes
+        darkModeCheckbox.addEventListener("change", function() {
+            if (this.checked) {
+                document.body.setAttribute("data-theme", "dark");
+                localStorage.setItem("theme", "dark");
+            } else {
+                document.body.removeAttribute("data-theme");
+                localStorage.setItem("theme", "light");
+            }
+        });
+    }
+});
 
   // Setup test view event listeners
   setupTestEventListeners() {
