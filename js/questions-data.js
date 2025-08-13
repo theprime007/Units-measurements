@@ -54,6 +54,11 @@ const DEFAULT_QUESTIONS = [
   {"id":50,"question":"The dimensional formula for capacitance is:","options":["[M⁻¹L⁻²T⁴I²]","[ML⁻²T⁴I²]","[M⁻¹LT⁴I²]","[ML⁻³T⁴I²]"],"correctIndex":0,"topic":"Electricity","difficulty":"Hard","solution":"Charge/potential = [IT]/[ML²T⁻³I⁻¹] = [M⁻¹L⁻²T⁴I²]."}
 ];
 
+// Make available globally
+if (typeof window !== 'undefined') {
+  window.DEFAULT_QUESTIONS = DEFAULT_QUESTIONS;
+}
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = DEFAULT_QUESTIONS;
