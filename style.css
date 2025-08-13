@@ -1887,3 +1887,49 @@ input[type="file"].form-control:focus {
   border-color: var(--color-primary);
   border-style: solid;
 }
+
+/* Custom Duration Input Styles */
+.custom-duration-inputs {
+  display: flex;
+  gap: var(--space-12);
+  align-items: flex-end;
+}
+
+.time-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.time-input {
+  width: 80px;
+  text-align: center;
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-medium);
+}
+
+.time-input-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  font-weight: var(--font-weight-medium);
+}
+
+.time-input::-webkit-outer-spin-button,
+.time-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.time-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.time-input:focus {
+  background-color: var(--color-bg-1);
+}
+
+.time-input.invalid {
+  border-color: var(--color-error);
+  background-color: rgba(var(--color-error-rgb), 0.1);
+}

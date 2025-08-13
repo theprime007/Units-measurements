@@ -27,7 +27,27 @@
                             <option value="60">60 minutes</option>
                             <option value="90">90 minutes (RRB Mode)</option>
                             <option value="120">120 minutes</option>
+                            <option value="custom">Custom Duration</option>
                         </select>
+                    </div>
+                    
+                    <div id="custom-duration-section" class="setting-group hidden">
+                        <label>Custom Duration:</label>
+                        <div class="custom-duration-inputs">
+                            <div class="time-input-group">
+                                <input type="number" id="custom-minutes" class="form-control time-input" 
+                                       min="1" max="300" placeholder="MM" value="90">
+                                <label for="custom-minutes" class="time-input-label">Minutes</label>
+                            </div>
+                            <div class="time-input-group">
+                                <input type="number" id="custom-seconds" class="form-control time-input" 
+                                       min="0" max="59" placeholder="SS" value="0">
+                                <label for="custom-seconds" class="time-input-label">Seconds</label>
+                            </div>
+                        </div>
+                        <small style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-4); display: block;">
+                            Enter custom test duration (1-300 minutes, 0-59 seconds)
+                        </small>
                     </div>
                     
                     <div class="setting-group">

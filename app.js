@@ -108,6 +108,8 @@ function setupEventListeners() {
     document.getElementById('resume-test-btn').addEventListener('click', resumeTest);
     document.getElementById('reset-test-btn').addEventListener('click', resetTest);
     document.getElementById('test-duration').addEventListener('change', updateTestDuration);
+    document.getElementById('custom-minutes').addEventListener('input', validateCustomDuration);
+    document.getElementById('custom-seconds').addEventListener('input', validateCustomDuration);
     document.getElementById('rrb-mode').addEventListener('change', toggleRRBMode);
     document.getElementById('dark-mode').addEventListener('change', toggleDarkMode);
     document.getElementById('enhanced-timer').addEventListener('change', toggleEnhancedTimer);
@@ -240,7 +242,28 @@ function showView(viewName) {
 
 function updateLandingView() {
   try {
-    document.getElementById('test-duration').value = state.testDuration;
+    const durationSelect = document.getElementById('test-duration');
+    const customSection = document.getElementById('custom-duration-section');
+    
+    // Check if current duration matches a preset value
+    const isCustomDuration = ![60, 90, 120].includes(state.testDuration);
+    
+    if (isCustomDuration) {
+      durationSelect.value = 'custom';
+      customSection.classList.remove('hidden');
+      
+      // Set custom input values from state
+      const totalMinutes = state.testDuration;
+      const minutes = Math.floor(totalMinutes);
+      const seconds = Math.round((totalMinutes - minutes) * 60);
+      
+      document.getElementById('custom-minutes').value = minutes;
+      document.getElementById('custom-seconds').value = seconds;
+    } else {
+      durationSelect.value = state.testDuration;
+      customSection.classList.add('hidden');
+    }
+    
     document.getElementById('rrb-mode').checked = state.isRRBMode;
     document.getElementById('dark-mode').checked = state.isDarkMode;
     document.getElementById('enhanced-timer').checked = state.enhancedTimer;
@@ -303,9 +326,72 @@ function resetTest() {
   }
 }
 
+function getCustomDuration() {
+  try {
+    const minutes = parseInt(document.getElementById('custom-minutes').value) || 0;
+    const seconds = parseInt(document.getElementById('custom-seconds').value) || 0;
+    
+    // Convert to total minutes with decimal for seconds
+    return minutes + (seconds / 60);
+  } catch (error) {
+    console.error('Get custom duration error:', error);
+    return 0;
+  }
+}
+
+function validateCustomDuration() {
+  try {
+    const minutesInput = document.getElementById('custom-minutes');
+    const secondsInput = document.getElementById('custom-seconds');
+    const minutes = parseInt(minutesInput.value) || 0;
+    const seconds = parseInt(secondsInput.value) || 0;
+    
+    // Validate minutes (1-300)
+    if (minutes < 1 || minutes > 300) {
+      minutesInput.classList.add('invalid');
+    } else {
+      minutesInput.classList.remove('invalid');
+    }
+    
+    // Validate seconds (0-59)
+    if (seconds < 0 || seconds > 59) {
+      secondsInput.classList.add('invalid');
+    } else {
+      secondsInput.classList.remove('invalid');
+    }
+    
+    // Update state if both inputs are valid
+    if (minutes >= 1 && minutes <= 300 && seconds >= 0 && seconds <= 59) {
+      const customDuration = getCustomDuration();
+      if (document.getElementById('test-duration').value === 'custom') {
+        state.testDuration = customDuration;
+        saveState();
+      }
+    }
+  } catch (error) {
+    console.error('Validate custom duration error:', error);
+  }
+}
+
 function updateTestDuration() {
   try {
-    state.testDuration = parseInt(document.getElementById('test-duration').value);
+    const durationSelect = document.getElementById('test-duration');
+    const customSection = document.getElementById('custom-duration-section');
+    
+    if (durationSelect.value === 'custom') {
+      // Show custom duration inputs
+      customSection.classList.remove('hidden');
+      // Calculate duration from custom inputs
+      const customDuration = getCustomDuration();
+      if (customDuration > 0) {
+        state.testDuration = customDuration;
+      }
+    } else {
+      // Hide custom duration inputs and use preset value
+      customSection.classList.add('hidden');
+      state.testDuration = parseInt(durationSelect.value);
+    }
+    
     saveState();
   } catch (error) {
     console.error('Update test duration error:', error);

@@ -3,7 +3,7 @@
 
 class CustomTimer {
   constructor(options = {}) {
-    this.duration = options.duration || 60; // Duration in minutes
+    this.duration = options.duration || 60; // Duration in minutes (can be decimal)
     this.element = options.element || null; // DOM element to display timer
     this.progressElement = options.progressElement || null; // Progress indicator element
     this.onTick = options.onTick || null; // Callback for each tick
@@ -269,7 +269,7 @@ class CustomTimer {
   // Setter methods for dynamic configuration
   setDuration(minutes) {
     if (!this.isRunning) {
-      this.duration = minutes;
+      this.duration = minutes; // Can be decimal for fractional minutes
       this.remainingTime = this.duration * 60 * 1000;
       this.updateDisplay();
     }
