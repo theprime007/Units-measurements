@@ -46,7 +46,7 @@ class ViewManager {
     try {
       const response = await fetch(`components/${componentName}.html`);
       if (!response.ok) {
-        throw new Error(`Failed to load component: ${componentName}`);
+        throw new Error(`Failed to load component: ${componentName} (${response.status})`);
       }
       
       const html = await response.text();
@@ -63,8 +63,39 @@ class ViewManager {
       return html;
     } catch (error) {
       console.error(`Error loading component ${componentName}:`, error);
+      
+      // Provide fallback for critical components
+      if (componentName.includes('view')) {
+        return this.createFallbackView(componentName);
+      }
+      
       throw error;
     }
+  }
+
+  // Create fallback view for component loading failures
+  createFallbackView(componentName) {
+    const viewId = componentName;
+    const fallbackHTML = `
+      <div id="${viewId}" class="view">
+        <div class="container">
+          <div class="error-message">
+            <h2>Component Loading Error</h2>
+            <p>Failed to load ${componentName}. Please refresh the page or contact support.</p>
+            <button onclick="location.reload()" class="btn btn--primary">Refresh Page</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Insert fallback into DOM
+    const container = document.getElementById('app-container');
+    if (container) {
+      container.insertAdjacentHTML('beforeend', fallbackHTML);
+    }
+    
+    this.componentCache[componentName] = fallbackHTML;
+    return fallbackHTML;
   }
 
   // Show specific view

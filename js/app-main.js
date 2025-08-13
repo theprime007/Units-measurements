@@ -393,10 +393,96 @@ class MockTestApp {
     }
   }
 
-  // Result and review methods (simplified)
+  // Result and review methods
   showReviewAnswers() {
-    // Implementation would be similar to original but calling appropriate managers
-    Utils.showSuccess('Review answers functionality - to be implemented');
+    try {
+      this.stateManager.updateState({ reviewCurrentQ: 0 });
+      this.viewManager.showView('review-answers');
+      this.displayReviewQuestion();
+    } catch (error) {
+      console.error('Show review answers error:', error);
+      Utils.showError('Failed to show review answers');
+    }
+  }
+
+  // Display current review question
+  displayReviewQuestion() {
+    try {
+      const state = this.stateManager.getState();
+      const qIndex = state.reviewCurrentQ;
+      const currentQuestions = this.getCurrentQuestions();
+      const question = currentQuestions[qIndex];
+      const result = state.results.questionResults[qIndex];
+      
+      // Update question count and content
+      this.viewManager.updateElement('review-q-num', qIndex + 1);
+      this.viewManager.updateElement('review-question-text', question.question);
+      
+      // User answer
+      const userAnswerText = result.userAnswer !== null 
+        ? question.options[result.userAnswer] 
+        : 'Not answered';
+      const userAnswerDisplay = document.getElementById('user-answer-display');
+      if (userAnswerDisplay) {
+        userAnswerDisplay.textContent = userAnswerText;
+        userAnswerDisplay.className = `answer-display ${result.status}-status`;
+      }
+      
+      // Correct answer
+      const correctAnswerDisplay = document.getElementById('correct-answer-display');
+      if (correctAnswerDisplay) {
+        correctAnswerDisplay.textContent = question.options[question.correctIndex];
+        correctAnswerDisplay.className = 'answer-display correct-status';
+      }
+      
+      // Solution
+      this.viewManager.updateElement('solution-text', question.solution);
+      
+      // Stats
+      this.viewManager.updateElement('question-time-spent', Utils.formatTime(result.timeSpent * 1000));
+      const statusDisplay = document.getElementById('question-status-display');
+      if (statusDisplay) {
+        statusDisplay.textContent = result.status.charAt(0).toUpperCase() + result.status.slice(1);
+        statusDisplay.className = `stat-value ${result.status}-status`;
+      }
+      
+      // Navigation
+      const totalQuestions = currentQuestions.length;
+      const prevBtn = document.getElementById('review-prev-btn');
+      const nextBtn = document.getElementById('review-next-btn');
+      
+      if (prevBtn) prevBtn.disabled = qIndex === 0;
+      if (nextBtn) nextBtn.disabled = qIndex === totalQuestions - 1;
+      
+      // Update question count in header
+      const questionNumberElement = document.querySelector('#review-answers-view .question-number');
+      if (questionNumberElement) {
+        questionNumberElement.innerHTML = `Question <span id="review-q-num">${qIndex + 1}</span> of ${totalQuestions}`;
+      }
+    } catch (error) {
+      console.error('Display review question error:', error);
+    }
+  }
+
+  // Get current questions (helper method)
+  getCurrentQuestions() {
+    const state = this.stateManager.getState();
+    return state.customQuestions || DEFAULT_QUESTIONS || [];
+  }
+
+  navigateReview(direction) {
+    try {
+      const state = this.stateManager.getState();
+      const currentQuestions = this.getCurrentQuestions();
+      const newQ = state.reviewCurrentQ + direction;
+      
+      if (newQ >= 0 && newQ < currentQuestions.length) {
+        this.stateManager.updateState({ reviewCurrentQ: newQ });
+        this.displayReviewQuestion();
+      }
+    } catch (error) {
+      console.error('Navigate review error:', error);
+    }
   }
 
   exportResults() {
@@ -435,11 +521,6 @@ class MockTestApp {
 
   showResults() {
     this.viewManager.showView('result');
-  }
-
-  navigateReview(direction) {
-    // Implementation for review navigation
-    Utils.showSuccess('Review navigation - to be implemented');
   }
 }
 
