@@ -6,6 +6,8 @@
     <title>RRB Mock Test - Units & Measurements</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="timer.js"></script>
+    <script src="question-manager.js"></script>
 </head>
 <body>
     <!-- Landing View -->
@@ -43,6 +45,37 @@
                             Dark Mode
                         </label>
                     </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enhanced-timer">
+                            <span class="checkbox-custom"></span>
+                            Enhanced Timer with Audio Alerts
+                        </label>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="question-source">Question Source:</label>
+                        <select id="question-source" class="form-control">
+                            <option value="default">Default Questions (50 questions)</option>
+                            <option value="json">Upload JSON File</option>
+                        </select>
+                    </div>
+                    
+                    <div id="json-upload-section" class="setting-group hidden">
+                        <label for="json-file">Upload Questions JSON:</label>
+                        <input type="file" id="json-file" accept=".json" class="form-control">
+                        <small style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-4); display: block;">
+                            Upload a JSON file with your custom questions
+                        </small>
+                        <div id="json-status" class="json-status hidden"></div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <button id="download-example-btn" class="btn btn--outline btn--sm" style="width: 100%;">
+                            Download Example JSON
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="action-buttons">
@@ -73,9 +106,12 @@
             </div>
             <div class="header-center">
                 <div class="timer-container">
-                    <div class="main-timer">
+                    <div class="main-timer" id="main-timer-container">
                         <span class="timer-label">Time Remaining:</span>
                         <span id="main-timer" class="timer-display">01:00:00</span>
+                        <div id="main-timer-progress" class="progress-container hidden">
+                            <div class="progress-bar"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -90,7 +126,12 @@
                 <div class="question-info">
                     <span class="question-number">Question <span id="current-q-num">1</span> of 50</span>
                     <div class="question-status">
-                        <span id="question-timer" class="question-time">00:00</span>
+                        <div class="question-timer-enhanced">
+                            <span id="question-timer" class="question-time">00:00</span>
+                            <div id="question-timer-progress" class="progress-container hidden">
+                                <div class="progress-bar"></div>
+                            </div>
+                        </div>
                         <button id="bookmark-btn" class="bookmark-btn" aria-label="Bookmark question">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
