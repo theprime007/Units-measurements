@@ -52,11 +52,35 @@ class ViewManager {
       const html = await response.text();
       this.componentCache[componentName] = html;
       
-      // Insert component into DOM if it's a view
+      // Insert component into DOM if it's a view or panel
       if (componentName.includes('view') || componentName === 'review-panel') {
         const container = document.getElementById('app-container');
         if (container) {
-          container.insertAdjacentHTML('beforeend', html);
+          // Create a temporary container to parse the HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = html;
+          
+          // Extract the main component element
+          const componentElement = tempDiv.firstElementChild;
+          if (componentElement) {
+            // Ensure the component has the correct ID for view management
+            if (componentName.includes('view') && !componentElement.id) {
+              componentElement.id = componentName;
+            }
+            
+            // Check if component already exists in DOM
+            const existingComponent = document.getElementById(componentElement.id);
+            if (existingComponent) {
+              // Replace existing component
+              existingComponent.replaceWith(componentElement);
+            } else {
+              // Append new component
+              container.appendChild(componentElement);
+            }
+            
+            // Initialize component-specific functionality
+            this.initializeComponent(componentName, componentElement);
+          }
         }
       }
       
@@ -71,6 +95,69 @@ class ViewManager {
       
       throw error;
     }
+  }
+
+  // Initialize component-specific functionality
+  initializeComponent(componentName, element) {
+    try {
+      // Add 'view' class to view components for CSS styling
+      if (componentName.includes('view')) {
+        element.classList.add('view');
+        
+        // Ensure view is hidden initially (except landing)
+        if (componentName !== 'landing-view') {
+          element.classList.remove('active');
+        } else {
+          // Landing view should be active by default
+          element.classList.add('active');
+        }
+      }
+      
+      // Component-specific initialization
+      switch (componentName) {
+        case 'test-view':
+          this.initializeTestView(element);
+          break;
+        case 'result-view':
+          this.initializeResultView(element);
+          break;
+        case 'review-answers-view':
+          this.initializeReviewAnswersView(element);
+          break;
+        case 'review-panel':
+          this.initializeReviewPanel(element);
+          break;
+      }
+    } catch (error) {
+      console.error(`Error initializing component ${componentName}:`, error);
+    }
+  }
+
+  // Component-specific initialization methods
+  initializeTestView(element) {
+    // Initialize test-specific event listeners and functionality
+    const nextBtn = element.querySelector('#next-question');
+    const prevBtn = element.querySelector('#prev-question');
+    
+    if (nextBtn) nextBtn.addEventListener('click', () => window.testManager?.nextQuestion());
+    if (prevBtn) prevBtn.addEventListener('click', () => window.testManager?.previousQuestion());
+  }
+
+  initializeResultView(element) {
+    // Initialize result-specific functionality
+    const reviewBtn = element.querySelector('#review-answers-btn');
+    if (reviewBtn) reviewBtn.addEventListener('click', () => this.showView('review-answers'));
+  }
+
+  initializeReviewAnswersView(element) {
+    // Initialize review-specific functionality
+    const backBtn = element.querySelector('#back-to-results-btn');
+    if (backBtn) backBtn.addEventListener('click', () => this.showView('result'));
+  }
+
+  initializeReviewPanel(element) {
+    // Initialize review panel functionality
+    element.classList.add('review-panel');
   }
 
   // Create fallback view for component loading failures
@@ -91,7 +178,14 @@ class ViewManager {
     // Insert fallback into DOM
     const container = document.getElementById('app-container');
     if (container) {
-      container.insertAdjacentHTML('beforeend', fallbackHTML);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = fallbackHTML;
+      const fallbackElement = tempDiv.firstElementChild;
+      
+      if (fallbackElement) {
+        container.appendChild(fallbackElement);
+        this.initializeComponent(componentName, fallbackElement);
+      }
     }
     
     this.componentCache[componentName] = fallbackHTML;
@@ -114,11 +208,53 @@ class ViewManager {
       if (targetView) {
         targetView.classList.add('active');
         this.currentView = viewName;
+        
+        // Trigger view-specific actions
+        this.onViewActivated(viewName, targetView);
       } else {
-        console.error(`View ${viewName} not found`);
+        console.error(`View ${viewName} not found in DOM`);
+        // Attempt to reload the component
+        this.loadComponent(`${viewName}-view`).then(() => {
+          const retryView = document.getElementById(`${viewName}-view`);
+          if (retryView) {
+            retryView.classList.add('active');
+            this.currentView = viewName;
+            this.onViewActivated(viewName, retryView);
+          }
+        }).catch(error => {
+          console.error(`Failed to reload component ${viewName}-view:`, error);
+        });
       }
     } catch (error) {
       console.error('Show view error:', error);
+    }
+  }
+
+  // Handle view activation events
+  onViewActivated(viewName, element) {
+    try {
+      switch (viewName) {
+        case 'test':
+          // Refresh test display
+          if (window.testManager) {
+            window.testManager.updateQuestionDisplay();
+          }
+          break;
+        case 'result':
+          // Update result calculations
+          if (window.testManager) {
+            window.testManager.calculateResults();
+          }
+          break;
+        case 'review-answers':
+          // Initialize review functionality
+          if (window.testManager) {
+            window.testManager.initializeReview();
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`Error in view activation for ${viewName}:`, error);
     }
   }
 
