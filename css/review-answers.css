@@ -31,6 +31,229 @@
   align-items: center;
   margin-top: 0.5rem;
 }
+/* --- Dark Mode Overrides --- */
+[data-theme="dark"] #review-answers-view,
+.dark-mode #review-answers-view {
+  background: #181a1b;
+}
+
+[data-theme="dark"] .review-header,
+.dark-mode .review-header {
+  background: #22292f;
+  color: #eaf6fb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="dark"] #back-to-results-btn,
+.dark-mode #back-to-results-btn {
+  background: rgba(34, 41, 47, 0.8);
+  color: #eaf6fb;
+  border-color: rgba(255,255,255,0.1);
+}
+
+[data-theme="dark"] #back-to-results-btn:hover,
+.dark-mode #back-to-results-btn:hover {
+  background: rgba(34, 41, 47, 1);
+}
+
+[data-theme="dark"] .review-content,
+.dark-mode .review-content {
+  background: transparent;
+}
+
+[data-theme="dark"] .question-review,
+.dark-mode .question-review,
+[data-theme="dark"] .review-answer-item,
+.dark-mode .review-answer-item {
+  background: #23272b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="dark"] #review-question-text,
+.dark-mode #review-question-text,
+[data-theme="dark"] .review-question-text,
+.dark-mode .review-question-text {
+  background: #23272b;
+  color: #eaf6fb;
+  border-bottom: 1px solid #26292c;
+}
+
+[data-theme="dark"] .answer-comparison,
+.dark-mode .answer-comparison,
+[data-theme="dark"] .solution-section,
+.dark-mode .solution-section {
+  border-bottom: 1px solid #26292c;
+}
+
+[data-theme="dark"] .user-answer,
+.dark-mode .user-answer,
+[data-theme="dark"] .correct-answer,
+.dark-mode .correct-answer {
+  background: #23272b;
+  border-left: 4px solid #26292c;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .answer-display,
+.dark-mode .answer-display {
+  background: #181a1b;
+  border: 1px solid #26292c;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .answer-display.not-answered,
+.dark-mode .answer-display.not-answered {
+  color: #b0b3b8;
+  background: #23272b;
+}
+
+[data-theme="dark"] .solution-content,
+.dark-mode .solution-content {
+  background: #22292f;
+  border-left-color: #1fb8cd;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .question-stats,
+.dark-mode .question-stats,
+[data-theme="dark"] .review-stats,
+.dark-mode .review-stats {
+  background: #23272b;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .stat-label,
+.dark-mode .stat-label {
+  color: #b0b3b8;
+}
+
+[data-theme="dark"] .stat-value,
+.dark-mode .stat-value {
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .review-navigation,
+.dark-mode .review-navigation {
+  background: transparent;
+}
+
+[data-theme="dark"] #review-prev-btn,
+.dark-mode #review-prev-btn {
+  background: #343a40;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] #review-prev-btn:hover:not(:disabled),
+.dark-mode #review-prev-btn:hover:not(:disabled) {
+  background: #24282c;
+}
+
+[data-theme="dark"] #review-next-btn,
+.dark-mode #review-next-btn {
+  background: #1fb8cd;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] #review-next-btn:hover:not(:disabled),
+.dark-mode #review-next-btn:hover:not(:disabled) {
+  background: #1396a2;
+}
+
+[data-theme="dark"] .review-question-header,
+.dark-mode .review-question-header {
+  background: #23272b;
+  border-bottom: 1px solid #26292c;
+}
+
+[data-theme="dark"] .review-question-header h3,
+.dark-mode .review-question-header h3 {
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .topic-badge,
+.dark-mode .topic-badge {
+  background: #26292c;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .difficulty-badge.easy,
+.dark-mode .difficulty-badge.easy {
+  background: #234c36;
+  color: #a4f6c9;
+}
+
+[data-theme="dark"] .difficulty-badge.medium,
+.dark-mode .difficulty-badge.medium {
+  background: #4c3d23;
+  color: #ffe6a4;
+}
+
+[data-theme="dark"] .difficulty-badge.hard,
+.dark-mode .difficulty-badge.hard {
+  background: #4c2323;
+  color: #ffa4a4;
+}
+
+[data-theme="dark"] .status-badge.correct,
+.dark-mode .status-badge.correct {
+  background: #234c36;
+  color: #a4f6c9;
+}
+
+[data-theme="dark"] .status-badge.incorrect,
+.dark-mode .status-badge.incorrect {
+  background: #4c2323;
+  color: #ffa4a4;
+}
+
+[data-theme="dark"] .status-badge.unanswered,
+.dark-mode .status-badge.unanswered {
+  background: #4c3d23;
+  color: #ffe6a4;
+}
+
+[data-theme="dark"] .review-option,
+.dark-mode .review-option {
+  background: #23272b;
+  border: 1px solid #26292c;
+}
+
+[data-theme="dark"] .review-option.user-selected,
+.dark-mode .review-option.user-selected {
+  background: #4c3d23;
+  border-color: #ffe6a4;
+}
+
+[data-theme="dark"] .review-option.correct-answer,
+.dark-mode .review-option.correct-answer {
+  background: #234c36;
+  border-color: #a4f6c9;
+}
+
+[data-theme="dark"] .review-option.user-selected.correct-answer,
+.dark-mode .review-option.user-selected.correct-answer {
+  background: #23364c;
+  border-color: #1fb8cd;
+}
+
+[data-theme="dark"] .option-label,
+.dark-mode .option-label {
+  background: #343a40;
+  color: #eaf6fb;
+}
+
+[data-theme="dark"] .review-option.correct-answer .option-label,
+.dark-mode .review-option.correct-answer .option-label {
+  background: #28a745;
+}
+
+[data-theme="dark"] .review-option.user-selected .option-label,
+.dark-mode .review-option.user-selected .option-label {
+  background: #ffc107;
+  color: #856404;
+}
+
+/* If you use .dark-mode on <body>, you can use .dark-mode instead of [data-theme="dark"] */
 
 .question-number {
   font-size: 0.9rem;
