@@ -367,17 +367,74 @@ class ViewManager {
 
   // Show/hide modal
   showModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-      modal.classList.remove('hidden');
+    try {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.remove('hidden');
+        
+        // Add modal event listeners if not already added
+        this.bindModalEvents(modal);
+        
+        // Focus management for accessibility
+        const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (firstFocusable) {
+          firstFocusable.focus();
+        }
+        
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+      }
+    } catch (error) {
+      console.error('Show modal error:', error);
     }
   }
 
   hideModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-      modal.classList.add('hidden');
+    try {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.add('hidden');
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
+      }
+    } catch (error) {
+      console.error('Hide modal error:', error);
     }
+  }
+
+  // Bind modal event listeners
+  bindModalEvents(modal) {
+    const modalId = modal.id;
+    
+    // Prevent duplicate event binding
+    if (modal.dataset.eventsbound === 'true') {
+      return;
+    }
+    
+    // Close button
+    const closeBtn = modal.querySelector('.modal-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.hideModal(modalId));
+    }
+    
+    // Backdrop click
+    const backdrop = modal.querySelector('.modal-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', () => this.hideModal(modalId));
+    }
+    
+    // ESC key
+    const escHandler = (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        this.hideModal(modalId);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    
+    // Store reference for cleanup
+    modal._escHandler = escHandler;
+    modal.dataset.eventsbound = 'true';
   }
 
   // Update element content safely

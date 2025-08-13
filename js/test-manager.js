@@ -576,6 +576,20 @@ class TestManager {
       this.stateManager.toggleBookmark(currentQ);
       
       const isBookmarked = this.stateManager.getBookmarked()[currentQ];
+      const bookmarkBtn = document.getElementById('bookmark-btn');
+      
+      // Update bookmark button visual state
+      if (bookmarkBtn) {
+        bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
+        
+        // Add temporary visual feedback
+        bookmarkBtn.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+          bookmarkBtn.style.transform = '';
+        }, 150);
+      }
+      
+      // Also update via viewManager for consistency
       this.viewManager.toggleElementClass('bookmark-btn', 'bookmarked', isBookmarked);
     } catch (error) {
       console.error('Toggle bookmark error:', error);
@@ -634,6 +648,7 @@ class TestManager {
         item.className = 'review-item';
         item.textContent = i + 1;
         
+        // Add status classes
         if (i === state.currentQ) {
           item.classList.add('current');
         }
@@ -646,7 +661,19 @@ class TestManager {
         
         if (state.bookmarked[i]) {
           item.classList.add('bookmarked');
+          // Add bookmark icon or indicator
+          const bookmarkIcon = document.createElement('span');
+          bookmarkIcon.className = 'bookmark-indicator';
+          bookmarkIcon.innerHTML = '★';
+          item.appendChild(bookmarkIcon);
         }
+        
+        // Add tooltip showing status
+        const status = [];
+        if (state.answers[i] !== null) status.push('Answered');
+        if (state.bookmarked[i]) status.push('Bookmarked');
+        if (status.length === 0) status.push('Not answered');
+        item.title = `Question ${i + 1}: ${status.join(', ')}`;
         
         item.addEventListener('click', () => {
           this.stateManager.setCurrentQuestion(i);

@@ -146,7 +146,12 @@ class MockTestApp {
     // Bookmark button
     const bookmarkBtn = document.getElementById('bookmark-btn');
     if (bookmarkBtn) {
-      bookmarkBtn.addEventListener('click', () => this.testManager.toggleBookmark());
+      bookmarkBtn.addEventListener('click', () => {
+        this.testManager.toggleBookmark();
+        // Add visual feedback
+        const isBookmarked = this.stateManager.getBookmarked()[this.stateManager.getCurrentQuestion()];
+        bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
+      });
     }
 
     // Clear answer button
@@ -156,20 +161,37 @@ class MockTestApp {
     }
 
     // Review panel buttons
-    const reviewBtn = document.getElementById('review-btn');
+    const reviewBtn = document.getElementById('review-panel-btn');
     if (reviewBtn) {
-      reviewBtn.addEventListener('click', () => this.testManager.showReviewPanel());
-    }
-
-    const closeReviewBtn = document.getElementById('close-review-btn');
-    if (closeReviewBtn) {
-      closeReviewBtn.addEventListener('click', () => this.testManager.hideReviewPanel());
+      reviewBtn.addEventListener('click', () => {
+        this.testManager.updateReviewGrid();
+        this.viewManager.showModal('review-panel');
+      });
     }
 
     // Submit test button
     const submitBtn = document.getElementById('submit-test-btn');
     if (submitBtn) {
       submitBtn.addEventListener('click', () => this.testManager.submitTest());
+    }
+
+    // Review panel specific event listeners
+    this.setupReviewPanelEventListeners();
+  }
+
+  // Setup review panel event listeners
+  setupReviewPanelEventListeners() {
+    const closeReviewBtn = document.getElementById('close-review-btn');
+    if (closeReviewBtn) {
+      closeReviewBtn.addEventListener('click', () => this.viewManager.hideModal('review-panel'));
+    }
+
+    const submitFromReviewBtn = document.getElementById('submit-from-review-btn');
+    if (submitFromReviewBtn) {
+      submitFromReviewBtn.addEventListener('click', () => {
+        this.viewManager.hideModal('review-panel');
+        this.testManager.submitTest();
+      });
     }
   }
 
