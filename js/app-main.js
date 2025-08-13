@@ -28,6 +28,9 @@ class MockTestApp {
       // Update UI with current state
       this.updateUI();
 
+      // Handle dark mode initial state
+      this.applyInitialDarkMode();
+
       console.log('MockTestApp initialized successfully');
     } catch (error) {
       console.error('App initialization error:', error);
@@ -129,29 +132,23 @@ class MockTestApp {
       downloadExampleBtn.addEventListener('click', () => this.downloadExampleJSON());
     }
   }
-  // Dark Mode Toggle Logic
-document.addEventListener("DOMContentLoaded", function() {
-    var darkModeCheckbox = document.getElementById("dark-mode");
-    if (darkModeCheckbox) {
-        // Set initial state from localStorage or system preference
-        if (localStorage.getItem("theme") === "dark" ||
-            (window.matchMedia("(prefers-color-scheme: dark)").matches && !localStorage.getItem("theme"))) {
-            document.body.setAttribute("data-theme", "dark");
-            darkModeCheckbox.checked = true;
-        }
 
-        // Listen for checkbox changes
-        darkModeCheckbox.addEventListener("change", function() {
-            if (this.checked) {
-                document.body.setAttribute("data-theme", "dark");
-                localStorage.setItem("theme", "dark");
-            } else {
-                document.body.removeAttribute("data-theme");
-                localStorage.setItem("theme", "light");
-            }
-        });
+  // Handles initial dark mode state (from localStorage or system preference)
+  applyInitialDarkMode() {
+    const darkModeCheckbox = document.getElementById('dark-mode');
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const storedTheme = localStorage.getItem("theme");
+
+    let isDark = false;
+    if (storedTheme === "dark" || (!storedTheme && prefersDark)) {
+      isDark = true;
     }
-});
+
+    if (darkModeCheckbox) {
+      darkModeCheckbox.checked = isDark;
+    }
+    document.body.setAttribute('data-theme', isDark ? "dark" : "light");
+  }
 
   // Setup test view event listeners
   setupTestEventListeners() {
@@ -532,14 +529,14 @@ document.addEventListener("DOMContentLoaded", function() {
       const secondsInput = document.getElementById('custom-seconds');
       const startBtn = document.getElementById('start-test-btn');
       
-      const minutes = parseInt(minutesInput.value) || 0;
-      const seconds = parseInt(secondsInput.value) || 0;
+      const minutes = minutesInput ? parseInt(minutesInput.value) || 0 : 0;
+      const seconds = secondsInput ? parseInt(secondsInput.value) || 0 : 0;
       
       const validation = Utils.validateCustomDuration(minutes, seconds);
       
       // Update input validation states
-      minutesInput.classList.toggle('invalid', !validation.minutes);
-      secondsInput.classList.toggle('invalid', !validation.seconds);
+      if (minutesInput) minutesInput.classList.toggle('invalid', !validation.minutes);
+      if (secondsInput) secondsInput.classList.toggle('invalid', !validation.seconds);
       
       if (validation.isValid) {
         const totalMinutes = Utils.convertToTotalMinutes(minutes, seconds);
@@ -579,13 +576,9 @@ document.addEventListener("DOMContentLoaded", function() {
     try {
       const isDarkMode = event.target.checked;
       this.stateManager.updateState({ isDarkMode });
-      
-      // Apply dark theme
-      if (isDarkMode) {
-        document.body.setAttribute('data-color-scheme', 'dark');
-      } else {
-        document.body.removeAttribute('data-color-scheme');
-      }
+
+      document.body.setAttribute('data-theme', isDarkMode ? "dark" : "light");
+      localStorage.setItem("theme", isDarkMode ? "dark" : "light");
     } catch (error) {
       console.error('Toggle dark mode error:', error);
     }
