@@ -226,7 +226,7 @@ function resetState() {
 
 // View management
 function showView(viewName) {
-  const views = ['landing', 'test', 'result', 'reviewAnswers'];
+  const views = ['landing', 'test', 'result', 'review-answers'];
   views.forEach(view => {
     const element = document.getElementById(`${view}-view`);
     if (element) {
@@ -1221,7 +1221,7 @@ function populateResultsTable(questionResults) {
 function showReviewAnswers() {
   try {
     state.reviewCurrentQ = 0;
-    showView('reviewAnswers');
+    showView('review-answers');
     displayReviewQuestion();
   } catch (error) {
     console.error('Show review answers error:', error);
@@ -1235,6 +1235,7 @@ function displayReviewQuestion() {
     const question = currentQuestions[qIndex];
     const result = state.results.questionResults[qIndex];
     
+    // Update question count and content
     document.getElementById('review-q-num').textContent = qIndex + 1;
     document.getElementById('review-question-text').textContent = question.question;
     
@@ -1262,8 +1263,14 @@ function displayReviewQuestion() {
     document.getElementById('review-prev-btn').disabled = qIndex === 0;
     document.getElementById('review-next-btn').disabled = qIndex === totalQuestions - 1;
     
-    // Update question count display
-    document.querySelector('#review-answers-view .question-number').innerHTML = `Question <span id="review-q-num">${qIndex + 1}</span> of ${totalQuestions}`;
+    // Update just the total count without recreating the review-q-num element
+    const questionNumberElement = document.querySelector('#review-answers-view .question-number');
+    if (questionNumberElement) {
+      // Split existing text and rebuild with correct total, preserving the span element
+      const existingHtml = questionNumberElement.innerHTML;
+      const totalPart = existingHtml.replace(/of \d+/, `of ${totalQuestions}`);
+      questionNumberElement.innerHTML = totalPart;
+    }
   } catch (error) {
     console.error('Display review question error:', error);
   }
