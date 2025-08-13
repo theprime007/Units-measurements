@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RRB Mock Test - Units & Measurements</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="timer.js"></script>
+    <script src="question-manager.js"></script>
+</head>
+<body>
+    <!-- Landing View -->
+    <div id="landing-view" class="view active">
+        <div class="container">
+            <div class="landing-content">
+                <h1>RRB Mock Test</h1>
+                <h2>Units & Measurements (Dimensional Analysis)</h2>
+                <div class="test-info">
+                    <p>50 Questions • Mixed Difficulty • Complete Analysis</p>
+                </div>
+                
+                <div class="settings-panel">
+                    <div class="setting-group">
+                        <label for="test-duration">Test Duration (minutes):</label>
+                        <select id="test-duration" class="form-control">
+                            <option value="60">60 minutes</option>
+                            <option value="90">90 minutes (RRB Mode)</option>
+                            <option value="120">120 minutes</option>
+                            <option value="custom">Custom Duration</option>
+                        </select>
+                    </div>
+                    
+                    <div id="custom-duration-section" class="setting-group hidden">
+                        <label>Custom Duration:</label>
+                        <div class="custom-duration-inputs">
+                            <div class="time-input-group">
+                                <input type="number" id="custom-minutes" class="form-control time-input" 
+                                       min="1" max="300" placeholder="MM" value="90">
+                                <label for="custom-minutes" class="time-input-label">Minutes</label>
+                            </div>
+                            <div class="time-input-group">
+                                <input type="number" id="custom-seconds" class="form-control time-input" 
+                                       min="0" max="59" placeholder="SS" value="0">
+                                <label for="custom-seconds" class="time-input-label">Seconds</label>
+                            </div>
+                        </div>
+                        <small style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-4); display: block;">
+                            Enter custom test duration (1-300 minutes, 0-59 seconds)
+                        </small>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rrb-mode">
+                            <span class="checkbox-custom"></span>
+                            RRB CBT Interface Mode
+                        </label>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="dark-mode">
+                            <span class="checkbox-custom"></span>
+                            Dark Mode
+                        </label>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enhanced-timer">
+                            <span class="checkbox-custom"></span>
+                            Enhanced Timer with Audio Alerts
+                        </label>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="question-source">Question Source:</label>
+                        <select id="question-source" class="form-control">
+                            <option value="default">Default Questions (50 questions)</option>
+                            <option value="json">Upload JSON File</option>
+                        </select>
+                    </div>
+                    
+                    <div id="json-upload-section" class="setting-group hidden">
+                        <label for="json-file">Upload Questions JSON:</label>
+                        <input type="file" id="json-file" accept=".json" class="form-control">
+                        <small style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-4); display: block;">
+                            Upload a JSON file with your custom questions
+                        </small>
+                        <div id="json-status" class="json-status hidden"></div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <button id="download-example-btn" class="btn btn--outline btn--sm" style="width: 100%;">
+                            Download Example JSON
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="start-test-btn" class="btn btn--primary btn--lg">Start Test</button>
+                    <button id="resume-test-btn" class="btn btn--outline btn--lg hidden">Resume Test</button>
+                    <button id="reset-test-btn" class="btn btn--secondary">Reset Previous Test</button>
+                </div>
+                
+                <div class="instructions">
+                    <h3>Instructions:</h3>
+                    <ul>
+                        <li>Click on options to select your answer</li>
+                        <li>Use Previous/Next buttons or arrow keys to navigate</li>
+                        <li>Press 'B' to bookmark, 'C' to clear answer</li>
+                        <li>Your progress is auto-saved every 5 seconds</li>
+                        <li>Review panel shows your progress before submission</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test View -->
+    <div id="test-view" class="view">
+        <div class="test-header">
+            <div class="header-left">
+                <span class="test-title">Units & Measurements Mock Test</span>
+            </div>
+            <div class="header-center">
+                <div class="timer-container">
+                    <div class="main-timer" id="main-timer-container">
+                        <span class="timer-label">Time Remaining:</span>
+                        <span id="main-timer" class="timer-display">01:00:00</span>
+                        <div id="main-timer-progress" class="progress-container hidden">
+                            <div class="progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="review-panel-btn" class="btn btn--outline btn--sm">Review</button>
+                <button id="submit-test-btn" class="btn btn--primary btn--sm">Submit Test</button>
+            </div>
+        </div>
+
+        <div class="test-content container">
+            <div class="question-header">
+                <div class="question-info">
+                    <span class="question-number">Question <span id="current-q-num">1</span> of 50</span>
+                    <div class="question-status">
+                        <div class="question-timer-enhanced">
+                            <span id="question-timer" class="question-time">00:00</span>
+                            <div id="question-timer-progress" class="progress-container hidden">
+                                <div class="progress-bar"></div>
+                            </div>
+                        </div>
+                        <button id="bookmark-btn" class="bookmark-btn" aria-label="Bookmark question">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="difficulty-indicator">
+                    <span id="difficulty-badge" class="status status--info">Easy</span>
+                    <span id="topic-badge" class="topic-tag">Basic Dimensions</span>
+                </div>
+            </div>
+
+            <div class="question-container">
+                <div class="question-text" id="question-text">
+                    Loading question...
+                </div>
+
+                <div class="options-container" id="options-container">
+                    <!-- Options will be populated by JavaScript -->
+                </div>
+
+                <div class="question-actions">
+                    <button id="clear-answer-btn" class="btn btn--outline">Clear (C)</button>
+                    <div class="navigation-buttons">
+                        <button id="prev-btn" class="btn btn--secondary">← Previous</button>
+                        <button id="next-btn" class="btn btn--primary">Next →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Panel Modal -->
+    <div id="review-panel" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Review Your Answers</h3>
+                <button class="modal-close" aria-label="Close review panel">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="review-legend">
+                    <div class="legend-item"><div class="legend-color answered"></div> Answered</div>
+                    <div class="legend-item"><div class="legend-color unanswered"></div> Unanswered</div>
+                    <div class="legend-item"><div class="legend-color bookmarked"></div> Bookmarked</div>
+                    <div class="legend-item"><div class="legend-color bookmarked-unanswered"></div> Bookmarked (Unanswered)</div>
+                </div>
+                <div class="review-grid" id="review-grid">
+                    <!-- Grid items will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-review-btn" class="btn btn--outline">Continue Test</button>
+                <button id="submit-from-review-btn" class="btn btn--primary">Submit Test</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result View -->
+    <div id="result-view" class="view">
+        <div class="container">
+            <div class="result-header">
+                <h1>Test Completed!</h1>
+                <div class="score-display">
+                    <div class="score-circle">
+                        <span id="score-percentage">0%</span>
+                        <span class="score-label">Score</span>
+                    </div>
+                    <div class="score-details">
+                        <div class="score-item">
+                            <span class="score-value" id="correct-answers">0</span>
+                            <span class="score-label">Correct</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-value" id="total-time">00:00:00</span>
+                            <span class="score-label">Total Time</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-value" id="avg-time">00:00</span>
+                            <span class="score-label">Avg/Question</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-section">
+                <h2>Performance Analysis</h2>
+                
+                <div class="charts-container">
+                    <div class="chart-wrapper">
+                        <h3>Topic-wise Accuracy</h3>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="topic-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <h3>Difficulty-wise Performance</h3>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="difficulty-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analysis-details">
+                    <div class="strengths-weaknesses">
+                        <div class="strengths">
+                            <h3>Strengths</h3>
+                            <div id="strengths-list" class="topic-list">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                        <div class="weaknesses">
+                            <h3>Weaknesses</h3>
+                            <div id="weaknesses-list" class="topic-list">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="study-recommendations">
+                        <h3>Top 5 Study Actions</h3>
+                        <ol id="study-actions" class="study-list">
+                            <!-- Populated by JavaScript -->
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="detailed-results">
+                    <h3>Question-wise Analysis</h3>
+                    <div class="results-table-container">
+                        <table id="results-table" class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Q#</th>
+                                    <th>Topic</th>
+                                    <th>Difficulty</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="result-actions">
+                    <button id="review-answers-btn" class="btn btn--primary">Review My Answers</button>
+                    <button id="view-solutions-btn" class="btn btn--outline">View Step-by-Step Solutions</button>
+                    <button id="export-results-btn" class="btn btn--secondary">Export Results</button>
+                    <button id="new-test-btn" class="btn btn--outline">Start New Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Answers Mode -->
+    <div id="review-answers-view" class="view">
+        <div class="container">
+            <div class="review-header">
+                <h2>Review Your Answers</h2>
+                <div class="review-nav">
+                    <span class="question-number">Question <span id="review-q-num">1</span> of 50</span>
+                    <button id="back-to-results-btn" class="btn btn--outline btn--sm">← Back to Results</button>
+                </div>
+            </div>
+
+            <div class="review-content">
+                <div class="question-review">
+                    <div class="question-text" id="review-question-text">
+                        <!-- Question text -->
+                    </div>
+
+                    <div class="answer-comparison">
+                        <div class="user-answer">
+                            <h4>Your Answer:</h4>
+                            <div id="user-answer-display" class="answer-display">
+                                <!-- User's answer -->
+                            </div>
+                        </div>
+
+                        <div class="correct-answer">
+                            <h4>Correct Answer:</h4>
+                            <div id="correct-answer-display" class="answer-display">
+                                <!-- Correct answer -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="solution-section">
+                        <h4>Solution:</h4>
+                        <div id="solution-text" class="solution-content">
+                            <!-- Solution explanation -->
+                        </div>
+                    </div>
+
+                    <div class="question-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Time Spent:</span>
+                            <span id="question-time-spent" class="stat-value">00:00</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Status:</span>
+                            <span id="question-status-display" class="stat-value">Correct</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-navigation">
+                    <button id="review-prev-btn" class="btn btn--secondary">← Previous</button>
+                    <button id="review-next-btn" class="btn btn--primary">Next →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js" defer></script>
+</body>
+</html>
