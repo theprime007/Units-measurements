@@ -420,7 +420,16 @@ class TestManager {
   // Initialize review functionality
   initializeReview() {
     try {
-      this.populateReviewAnswers();
+      // Set initial review question to 0
+      this.stateManager.updateState({ reviewCurrentQ: 0 });
+      
+      // Initialize review display if we're using the single-question review view
+      if (window.app && window.app.updateReviewDisplay) {
+        window.app.updateReviewDisplay(0);
+      } else {
+        // Fallback: populate full review answers
+        this.populateReviewAnswers();
+      }
     } catch (error) {
       console.error('Initialize review error:', error);
     }
