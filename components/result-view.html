@@ -30,15 +30,24 @@
             
             <div class="charts-container">
                 <div class="chart-wrapper">
-                    <h3>Topic-wise Accuracy</h3>
-                    <div class="chart-container" style="position: relative; height: 300px;">
-                        <canvas id="topic-chart"></canvas>
+                    <h3 id="topic-chart-title">Topic-wise Accuracy</h3>
+                    <div class="chart-container" style="position: relative; height: 300px;" role="img" aria-labelledby="topic-chart-title" aria-describedby="topic-chart-desc">
+                        <canvas id="topic-chart" aria-label="Chart showing accuracy percentage by topic"></canvas>
+                        <p id="topic-chart-desc" class="sr-only">Bar chart displaying performance accuracy across different physics topics</p>
                     </div>
                 </div>
                 <div class="chart-wrapper">
-                    <h3>Difficulty-wise Performance</h3>
-                    <div class="chart-container" style="position: relative; height: 300px;">
-                        <canvas id="difficulty-chart"></canvas>
+                    <h3 id="difficulty-chart-title">Difficulty-wise Performance</h3>
+                    <div class="chart-container" style="position: relative; height: 300px;" role="img" aria-labelledby="difficulty-chart-title" aria-describedby="difficulty-chart-desc">
+                        <canvas id="difficulty-chart" aria-label="Chart showing performance by difficulty level"></canvas>
+                        <p id="difficulty-chart-desc" class="sr-only">Stacked bar chart showing correct and incorrect answers by difficulty level</p>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <h3 id="score-chart-title">Overall Score</h3>
+                    <div class="chart-container" style="position: relative; height: 300px;" role="img" aria-labelledby="score-chart-title" aria-describedby="score-chart-desc">
+                        <canvas id="score-chart" aria-label="Circular chart showing overall test score"></canvas>
+                        <p id="score-chart-desc" class="sr-only">Doughnut chart displaying overall test score as a percentage</p>
                     </div>
                 </div>
             </div>
