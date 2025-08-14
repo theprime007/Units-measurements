@@ -1,7 +1,15 @@
-<!-- Test View Component -->
+<!-- Enhanced Test View Component -->
 <div id="test-view" class="view">
     <div class="test-header">
         <div class="header-left">
+            <button id="exit-exam-btn" class="btn btn--danger btn--sm" title="Exit Exam">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16,17 21,12 16,7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                Exit Exam
+            </button>
             <span class="test-title">Units & Measurements Mock Test</span>
         </div>
         <div class="header-center">
@@ -16,53 +24,124 @@
             </div>
         </div>
         <div class="header-right">
+            <button id="toggle-question-grid-btn" class="btn btn--outline btn--sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Questions
+            </button>
             <button id="review-panel-btn" class="btn btn--outline btn--sm">Review</button>
             <button id="submit-test-btn" class="btn btn--primary btn--sm">Submit Test</button>
         </div>
     </div>
 
-    <div class="test-content container">
-        <div class="question-header">
-            <div class="question-info">
-                <span class="question-number">Question <span id="current-q-num">1</span> of 50</span>
-                <div class="question-status">
-                    <div class="question-timer-enhanced">
-                        <span id="question-timer" class="question-time">00:00</span>
-                        <div id="question-timer-progress" class="progress-container hidden">
-                            <div class="progress-bar"></div>
-                        </div>
-                    </div>
-                    <button id="bookmark-btn" class="bookmark-btn" aria-label="Bookmark question">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
-                        </svg>
-                    </button>
-                </div>
+    <div class="test-content-wrapper">
+        <!-- Question Navigation Sidebar -->
+        <div id="question-sidebar" class="question-sidebar hidden">
+            <div class="sidebar-header">
+                <h3>Questions Overview</h3>
+                <button id="close-sidebar-btn" class="btn btn--ghost btn--sm">×</button>
             </div>
-            <div class="difficulty-indicator">
-                <span id="difficulty-badge" class="status status--info">Easy</span>
-                <span id="topic-badge" class="topic-tag">Basic Dimensions</span>
+            <div class="sidebar-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="answered">Answered</button>
+                <button class="filter-btn" data-filter="unanswered">Unanswered</button>
+                <button class="filter-btn" data-filter="bookmarked">Bookmarked</button>
+            </div>
+            <div class="question-grid" id="question-grid">
+                <!-- Grid items will be populated by JavaScript -->
             </div>
         </div>
 
-        <div class="question-container">
-            <div class="question-text" id="question-text">
-                Loading question...
-            </div>
-
-            <div class="options-container" id="options-container">
-                <!-- Options will be populated by JavaScript -->
-            </div>
-
-            <div class="question-actions">
-                <button id="clear-answer-btn" class="btn btn--outline">Clear (C)</button>
-                <div class="navigation-buttons">
-                    <button id="prev-btn" class="btn btn--secondary">← Previous</button>
-                    <button id="next-btn" class="btn btn--primary">Next →</button>
+        <div class="test-content container">
+            <div class="question-header">
+                <div class="question-info">
+                    <span class="question-number">Question <span id="current-q-num">1</span> of 50</span>
+                    <div class="question-status">
+                        <div class="question-timer-enhanced">
+                            <span class="timer-label-small">Question Time:</span>
+                            <span id="question-timer" class="question-time">00:40</span>
+                            <div id="question-timer-progress" class="progress-container hidden">
+                                <div class="progress-bar"></div>
+                            </div>
+                        </div>
+                        <button id="bookmark-btn" class="bookmark-btn" aria-label="Bookmark question">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-                <!-- Added jump-to-question grid below navigation buttons -->
-                <div class="question-jump-grid" id="question-jump-grid"></div>
+                <div class="difficulty-indicator">
+                    <span id="difficulty-badge" class="status status--info">Easy</span>
+                    <span id="topic-badge" class="topic-tag">Basic Dimensions</span>
+                </div>
             </div>
+
+            <div class="question-container">
+                <div class="question-text" id="question-text">
+                    Loading question...
+                </div>
+
+                <div class="options-container" id="options-container">
+                    <!-- Options will be populated by JavaScript -->
+                </div>
+
+                <div class="question-actions">
+                    <div class="action-buttons-left">
+                        <button id="clear-answer-btn" class="btn btn--outline">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                            Clear (C)
+                        </button>
+                        <button id="mark-review-btn" class="btn btn--outline">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11l3 3l8-8"></path>
+                                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9s4.03-9 9-9c1.51 0 2.93.37 4.18 1.03"></path>
+                            </svg>
+                            Mark for Review
+                        </button>
+                    </div>
+                    <div class="navigation-buttons">
+                        <button id="prev-btn" class="btn btn--secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 18l-6-6 6-6"></path>
+                            </svg>
+                            Previous
+                        </button>
+                        <button id="next-btn" class="btn btn--primary">
+                            Next
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exit Confirmation Modal -->
+<div id="exit-confirmation-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Exit Exam Confirmation</h3>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to exit the exam?</p>
+            <p class="warning-text">⚠️ Your progress will be saved, but the timer will stop.</p>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-exit-btn" class="btn btn--outline">Cancel</button>
+            <button id="confirm-exit-btn" class="btn btn--danger">Exit Exam</button>
         </div>
     </div>
 </div>
