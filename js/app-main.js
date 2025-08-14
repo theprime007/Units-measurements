@@ -7,16 +7,29 @@ class MockTestApp {
     this.viewManager = null;
     this.testManager = null;
     this.questionManager = null;
+    this.ui = null;
+    this.charts = null;
+    this.storage = null;
   }
 
   // Initialize the application
   async init() {
     try {
+      // Initialize core modules
+      this.storage = new Storage();
+      this.ui = new UI();
+      this.charts = new Charts();
+      
       // Initialize managers
       this.stateManager = new StateManager();
       this.viewManager = new ViewManager();
       this.questionManager = new QuestionManager();
       this.testManager = new TestManager(this.stateManager, this.viewManager, this.questionManager);
+
+      // Make modules globally available for easier access
+      window.appStorage = this.storage;
+      window.appUI = this.ui;
+      window.appCharts = this.charts;
 
       // Initialize managers
       await this.viewManager.init();
@@ -30,6 +43,9 @@ class MockTestApp {
 
       // Handle dark mode initial state
       this.applyInitialDarkMode();
+
+      // Setup PWA-specific functionality
+      this.setupPWAFeatures();
 
       console.log('MockTestApp initialized successfully');
     } catch (error) {
@@ -737,6 +753,107 @@ class MockTestApp {
   getCurrentQuestions() {
     const state = this.stateManager.getState();
     return state.customQuestions || window.DEFAULT_QUESTIONS || [];
+  }
+
+  // Setup PWA-specific functionality
+  setupPWAFeatures() {
+    // Setup theme handling with UI module
+    const themeToggle = document.getElementById('dark-mode');
+    if (themeToggle) {
+      themeToggle.addEventListener('change', (e) => {
+        const newTheme = e.target.checked ? 'dark' : 'light';
+        this.ui.setTheme(newTheme);
+        this.charts.setTheme(newTheme);
+      });
+    }
+
+    // Setup responsive chart handling
+    window.addEventListener('resize', Utils.debounce(() => {
+      this.charts.handleResize();
+    }, 250));
+
+    // Setup offline/online handlers
+    window.addEventListener('online', () => {
+      this.ui.showToast('Connection restored', 'success');
+    });
+
+    window.addEventListener('offline', () => {
+      this.ui.showToast('You are offline. App will continue to work with limited functionality.', 'warning', 5000);
+    });
+
+    // Setup service worker update notifications
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SYNC_PROGRESS') {
+          this.ui.showToast(event.data.message, 'info');
+        }
+      });
+    }
+
+    // Setup keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Global keyboard shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'k':
+            e.preventDefault();
+            // Show search/navigation modal
+            break;
+          case 's':
+            e.preventDefault();
+            this.saveProgress();
+            break;
+          case 'd':
+            e.preventDefault();
+            if (themeToggle) {
+              themeToggle.click();
+            }
+            break;
+        }
+      }
+    });
+
+    // Setup auto-save functionality
+    const settings = this.storage.loadSettings();
+    if (settings.auto_save) {
+      setInterval(() => {
+        if (this.stateManager.getState().testActive) {
+          this.saveProgress();
+        }
+      }, 30000); // Auto-save every 30 seconds
+    }
+  }
+
+  // Enhanced save progress with storage module
+  saveProgress() {
+    try {
+      const state = this.stateManager.getState();
+      const success = this.storage.saveProgress(state);
+      
+      if (success) {
+        this.ui.showToast('Progress saved', 'success', 2000);
+      } else {
+        this.ui.showToast('Failed to save progress', 'error');
+      }
+    } catch (error) {
+      console.error('Save progress error:', error);
+      this.ui.showToast('Failed to save progress', 'error');
+    }
+  }
+
+  // Enhanced load progress with storage module
+  loadProgress() {
+    try {
+      const progress = this.storage.loadProgress();
+      if (progress) {
+        this.stateManager.updateState(progress);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Load progress error:', error);
+      return false;
+    }
   }
 }
 

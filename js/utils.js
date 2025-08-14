@@ -229,13 +229,48 @@ class Utils {
     }
   }
 
+    // Show toast notification (uses UI module if available)
+  static showToast(message, type = 'info', duration = 3000) {
+    if (window.appUI && window.appUI.showToast) {
+      return window.appUI.showToast(message, type, duration);
+    }
+    
+    // Fallback to console
+    console.log(`Toast (${type}): ${message}`);
+    
+    // In development, show alert for important messages
+    if (Utils.isDevelopment() && (type === 'error' || type === 'warning')) {
+      alert(`${type.toUpperCase()}: ${message}`);
+    }
+  }
+
+  // Show error message
+  static showError(message, title = 'Error') {
+    console.error(`${title}: ${message}`);
+    
+    // Use toast if available
+    if (window.appUI && window.appUI.showToast) {
+      window.appUI.showToast(message, 'error', 5000);
+    } else {
+      // Fallback to alert in development
+      if (Utils.isDevelopment()) {
+        alert(`${title}: ${message}`);
+      }
+    }
+  }
+
   // Show success message
   static showSuccess(message, title = 'Success') {
     console.log(`${title}: ${message}`);
     
-    // In development, show alert
-    if (Utils.isDevelopment()) {
-      alert(`${title}: ${message}`);
+    // Use toast if available
+    if (window.appUI && window.appUI.showToast) {
+      window.appUI.showToast(message, 'success', 3000);
+    } else {
+      // In development, show alert
+      if (Utils.isDevelopment()) {
+        alert(`${title}: ${message}`);
+      }
     }
   }
 }
