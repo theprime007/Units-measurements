@@ -12,7 +12,7 @@
   --ra-neutral: #e9ecef;
   --ra-muted: #6c757d;
   --ra-card-radius: 1rem;
-  --ra-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --ra-card-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
   --ra-border: 1px solid var(--ra-neutral);
   --ra-border-bold: 2px solid var(--ra-primary);
   --ra-spacing: 1.5rem;
@@ -24,21 +24,6 @@
 }
 
 /* Dark mode overrides */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ra-bg: #181a1b;
-    --ra-surface: #23272b;
-    --ra-primary: #1fb8cd;
-    --ra-primary-hover: #1396a2;
-    --ra-success: #28a745;
-    --ra-danger: #dc3545;
-    --ra-warning: #ffc107;
-    --ra-neutral: #26292c;
-    --ra-muted: #b0b3b8;
-    --ra-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-  }
-}
-
 [data-theme="dark"], .dark-mode {
   --ra-bg: #181a1b;
   --ra-surface: #23272b;
@@ -49,7 +34,7 @@
   --ra-warning: #ffc107;
   --ra-neutral: #26292c;
   --ra-muted: #b0b3b8;
-  --ra-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  --ra-card-shadow: 0 2px 8px rgb(0 0 0 / 0.7);
 }
 
 #review-answers-view {
@@ -64,7 +49,7 @@
   background: var(--ra-primary);
   color: #fff;
   padding: var(--ra-spacing-sm) var(--ra-spacing-lg);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.10);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -96,9 +81,9 @@
 }
 
 #back-to-results-btn {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgb(255 255 255 / 0.10);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgb(255 255 255 / 0.18);
   padding: .45rem 1.1rem;
   border-radius: var(--ra-badge-radius);
   font-size: .97rem;
@@ -106,20 +91,11 @@
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 #back-to-results-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgb(255 255 255 / 0.18);
   transform: translateY(-2px) scale(1.02);
-}
-
-#back-to-results-btn:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
 }
 
 /* Review Content */
@@ -211,7 +187,6 @@
 }
 
 .solution-content {
-  background: rgba(31, 184, 205, 0.08);
   background: color-mix(in srgb, var(--ra-primary) 8%, var(--ra-bg));
   border-left: 5px solid var(--ra-primary);
   padding: var(--ra-spacing);
@@ -273,34 +248,19 @@
   border: none;
   cursor: pointer;
   outline: none;
-  min-height: 44px;
 }
 
 #review-prev-btn {
   background: var(--ra-muted);
   color: #fff;
 }
-#review-prev-btn:hover:not(:disabled) {
-  background: #545b62;
-  transform: translateY(-1px);
-}
+#review-prev-btn:hover:not(:disabled) { background: #545b62; transform: translateY(-1px); }
 #review-next-btn {
   background: var(--ra-primary);
   color: #fff;
 }
-#review-next-btn:hover:not(:disabled) {
-  background: var(--ra-primary-hover);
-  transform: translateY(-1px);
-}
-#review-prev-btn:disabled, #review-next-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-#review-prev-btn:focus-visible, #review-next-btn:focus-visible {
-  outline: 2px solid var(--ra-primary);
-  outline-offset: 2px;
-}
+#review-next-btn:hover:not(:disabled) { background: var(--ra-primary-hover); transform: translateY(-1px);}
+#review-prev-btn:disabled, #review-next-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 /* Review Items Container */
 #review-answers-container {
@@ -347,9 +307,6 @@
   letter-spacing: .5px;
   background: var(--ra-neutral);
   color: var(--ra-muted);
-  min-height: 24px;
-  display: inline-flex;
-  align-items: center;
 }
 .difficulty-badge.easy, .status-badge.correct { background: #d4edda; color: #155724;}
 .difficulty-badge.medium, .status-badge.unanswered { background: #fff3cd; color: #856404;}
@@ -371,7 +328,6 @@
   background: var(--ra-bg);
   position: relative;
   transition: background var(--ra-transition), border-color var(--ra-transition);
-  min-height: 44px;
 }
 .review-option.user-selected {
   background: #fff3cd;
@@ -385,15 +341,11 @@
   background: #d1ecf1;
   border-color: var(--ra-primary);
 }
-.review-option:focus-visible {
-  outline: 2px solid var(--ra-primary);
-  outline-offset: 2px;
-}
 .option-label {
   background: var(--ra-muted);
   color: #fff;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
