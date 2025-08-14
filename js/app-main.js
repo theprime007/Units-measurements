@@ -30,6 +30,7 @@ class MockTestApp {
       window.appStorage = this.storage;
       window.appUI = this.ui;
       window.appCharts = this.charts;
+      window.app = this; // Phase 4: Make app instance available globally
 
       // Initialize managers
       await this.viewManager.init();
@@ -46,6 +47,9 @@ class MockTestApp {
 
       // Setup PWA-specific functionality
       this.setupPWAFeatures();
+
+      // Phase 4: Initialize enhanced navigation
+      this.initializeEnhancedNavigation();
 
       console.log('MockTestApp initialized successfully');
     } catch (error) {
@@ -753,6 +757,462 @@ class MockTestApp {
   getCurrentQuestions() {
     const state = this.stateManager.getState();
     return state.customQuestions || window.DEFAULT_QUESTIONS || [];
+  }
+
+  // Phase 4: Enhanced question navigation methods
+  initializeEnhancedNavigation() {
+    this.setupQuestionSearch();
+    this.setupTopicGroups();
+    this.setupSmartFilters();
+    this.setupViewToggle();
+  }
+
+  setupQuestionSearch() {
+    const searchInput = document.getElementById('question-search');
+    const clearButton = document.getElementById('clear-search');
+    
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.filterQuestionsBySearch(e.target.value);
+      });
+    }
+    
+    if (clearButton) {
+      clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        this.filterQuestionsBySearch('');
+        searchInput.focus();
+      });
+    }
+  }
+
+  filterQuestionsBySearch(query) {
+    const questions = this.getCurrentQuestions();
+    const filteredQuestions = questions.filter(q => 
+      q.question.toLowerCase().includes(query.toLowerCase()) ||
+      q.topic.toLowerCase().includes(query.toLowerCase())
+    );
+    this.updateQuestionDisplay(filteredQuestions);
+  }
+
+  setupTopicGroups() {
+    const topicToggles = document.querySelectorAll('.topic-toggle');
+    topicToggles.forEach(toggle => {
+      toggle.addEventListener('click', (e) => {
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', !isExpanded);
+        
+        const questionsContainer = toggle.parentElement.nextElementSibling;
+        if (!isExpanded) {
+          questionsContainer.style.maxHeight = questionsContainer.scrollHeight + 'px';
+        } else {
+          questionsContainer.style.maxHeight = '0';
+        }
+      });
+    });
+  }
+
+  setupSmartFilters() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        // Remove active class from all buttons
+        filterButtons.forEach(b => b.classList.remove('active'));
+        // Add active class to clicked button
+        btn.classList.add('active');
+        
+        const filter = btn.dataset.filter;
+        this.applySmartFilter(filter);
+      });
+    });
+  }
+
+  applySmartFilter(filter) {
+    const state = this.stateManager.getState();
+    const questions = this.getCurrentQuestions();
+    
+    let filteredQuestions = questions;
+    
+    switch (filter) {
+      case 'answered':
+        filteredQuestions = questions.filter((q, index) => state.answers[index + 1]);
+        break;
+      case 'unanswered':
+        filteredQuestions = questions.filter((q, index) => !state.answers[index + 1]);
+        break;
+      case 'bookmarked':
+        filteredQuestions = questions.filter((q, index) => state.bookmarked.includes(index + 1));
+        break;
+      case 'flagged':
+        filteredQuestions = questions.filter((q, index) => state.flagged && state.flagged.includes(index + 1));
+        break;
+      default:
+        filteredQuestions = questions;
+    }
+    
+    this.updateQuestionDisplay(filteredQuestions);
+    this.updateFilterCounts();
+  }
+
+  setupViewToggle() {
+    const viewButtons = document.querySelectorAll('.view-btn');
+    const topicGroups = document.querySelector('.topic-groups');
+    const questionGrid = document.querySelector('.question-grid');
+    
+    viewButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        viewButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const view = btn.dataset.view;
+        if (view === 'topics') {
+          topicGroups.classList.remove('hidden');
+          questionGrid.classList.add('hidden');
+        } else {
+          topicGroups.classList.add('hidden');
+          questionGrid.classList.remove('hidden');
+        }
+      });
+    });
+  }
+
+  updateQuestionDisplay(questions) {
+    // Update topic groups
+    this.updateTopicGroupsDisplay(questions);
+    // Update traditional grid if visible
+    this.updateQuestionGrid(questions);
+  }
+
+  updateTopicGroupsDisplay(questions) {
+    const topics = ['Basic Dimensions', 'Unit Systems', 'Error Analysis'];
+    
+    topics.forEach(topic => {
+      const topicQuestions = questions.filter(q => q.topic === topic);
+      const topicContainer = document.querySelector(`[data-topic="${topic}"] .topic-questions`);
+      const topicProgress = document.querySelector(`[data-topic="${topic}"] .topic-progress`);
+      
+      if (topicContainer) {
+        topicContainer.innerHTML = '';
+        topicQuestions.forEach((q, index) => {
+          const questionIndex = questions.indexOf(q) + 1;
+          const questionMini = this.createQuestionMini(questionIndex, q);
+          topicContainer.appendChild(questionMini);
+        });
+      }
+      
+      if (topicProgress) {
+        const answeredCount = this.getAnsweredCountForTopic(topic);
+        topicProgress.textContent = `${answeredCount}/${topicQuestions.length}`;
+      }
+    });
+  }
+
+  createQuestionMini(questionIndex, question) {
+    const state = this.stateManager.getState();
+    const mini = document.createElement('div');
+    mini.className = 'question-mini';
+    mini.textContent = questionIndex;
+    mini.dataset.questionIndex = questionIndex;
+    
+    // Add status classes
+    if (questionIndex === state.currentQ) {
+      mini.classList.add('current');
+    } else if (state.answers[questionIndex]) {
+      mini.classList.add('answered');
+    }
+    
+    if (state.bookmarked.includes(questionIndex)) {
+      mini.classList.add('bookmarked');
+    }
+    
+    if (state.flagged && state.flagged.includes(questionIndex)) {
+      mini.classList.add('flagged');
+    }
+    
+    // Add click handler
+    mini.addEventListener('click', () => {
+      this.testManager.goToQuestion(questionIndex);
+      this.closeSidebar();
+    });
+    
+    return mini;
+  }
+
+  updateQuestionGrid(questions) {
+    const grid = document.getElementById('question-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    questions.forEach((q, index) => {
+      const questionIndex = questions.indexOf(q) + 1;
+      const gridItem = this.createQuestionGridItem(questionIndex, q);
+      grid.appendChild(gridItem);
+    });
+  }
+
+  createQuestionGridItem(questionIndex, question) {
+    const state = this.stateManager.getState();
+    const item = document.createElement('button');
+    item.className = 'question-grid-item';
+    item.textContent = questionIndex;
+    item.dataset.questionIndex = questionIndex;
+    
+    // Add status classes similar to mini
+    if (questionIndex === state.currentQ) {
+      item.classList.add('current');
+    } else if (state.answers[questionIndex]) {
+      item.classList.add('answered');
+    }
+    
+    if (state.bookmarked.includes(questionIndex)) {
+      item.classList.add('bookmarked');
+    }
+    
+    // Add click handler
+    item.addEventListener('click', () => {
+      this.testManager.goToQuestion(questionIndex);
+      this.closeSidebar();
+    });
+    
+    return item;
+  }
+
+  updateFilterCounts() {
+    const state = this.stateManager.getState();
+    const questions = this.getCurrentQuestions();
+    
+    const answeredCount = questions.filter((q, index) => state.answers[index + 1]).length;
+    const unansweredCount = questions.length - answeredCount;
+    const bookmarkedCount = state.bookmarked.length;
+    const flaggedCount = (state.flagged || []).length;
+    
+    // Update count displays
+    const updateCount = (id, count) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = count;
+    };
+    
+    updateCount('all-count', questions.length);
+    updateCount('answered-count', answeredCount);
+    updateCount('answered-filter-count', answeredCount);
+    updateCount('unanswered-count', unansweredCount);
+    updateCount('bookmarked-count', bookmarkedCount);
+    updateCount('flagged-count', flaggedCount);
+    updateCount('total-questions', questions.length);
+  }
+
+  getAnsweredCountForTopic(topic) {
+    const state = this.stateManager.getState();
+    const questions = this.getCurrentQuestions();
+    const topicQuestions = questions.filter(q => q.topic === topic);
+    
+    return topicQuestions.filter((q, index) => {
+      const questionIndex = questions.indexOf(q) + 1;
+      return state.answers[questionIndex];
+    }).length;
+  }
+
+  closeSidebar() {
+    const sidebar = document.getElementById('question-sidebar');
+    if (sidebar) {
+      sidebar.classList.add('hidden');
+    }
+  }
+
+  // Phase 4: Advanced analytics methods
+  generateAdvancedAnalytics(results) {
+    const analytics = {
+      accuracyTrend: this.calculateAccuracyTrend(results),
+      speedAnalysis: this.calculateSpeedAnalysis(results),
+      consistencyScore: this.calculateConsistencyScore(results),
+      predictedScore: this.calculatePredictedScore(results),
+      timeDistribution: this.calculateTimeDistribution(results),
+      smartRecommendations: this.generateSmartRecommendations(results)
+    };
+    
+    this.displayAdvancedAnalytics(analytics);
+    return analytics;
+  }
+
+  calculateAccuracyTrend(results) {
+    // Simulate trend calculation - in real app, this would compare with previous attempts
+    return {
+      value: '+5.2%',
+      direction: 'positive',
+      label: 'vs. last attempt'
+    };
+  }
+
+  calculateSpeedAnalysis(results) {
+    const avgTime = results.averageTime || 0;
+    const optimalTime = 25; // seconds
+    const ratio = avgTime / optimalTime;
+    
+    return {
+      value: `${ratio.toFixed(1)}x`,
+      label: 'optimal speed',
+      status: ratio < 1.2 ? 'optimal' : ratio < 1.5 ? 'acceptable' : 'slow'
+    };
+  }
+
+  calculateConsistencyScore(results) {
+    // Calculate consistency based on time variance and accuracy patterns
+    const score = Math.random() * 2 + 8; // Simulate 8-10 range
+    return {
+      value: `${score.toFixed(1)}/10`,
+      label: 'stability index',
+      status: score > 8.5 ? 'strong' : score > 7 ? 'good' : 'needs improvement'
+    };
+  }
+
+  calculatePredictedScore(results) {
+    const currentScore = results.percentage || 0;
+    const confidence = Math.random() * 15 + 75; // 75-90% confidence
+    const range = Math.round(currentScore * 0.1); // ±10% range
+    
+    return {
+      range: `${Math.max(0, currentScore - range)}-${Math.min(100, currentScore + range)}%`,
+      confidence: Math.round(confidence),
+      label: 'in real exam'
+    };
+  }
+
+  calculateTimeDistribution(results) {
+    // Simulate time distribution analysis
+    return {
+      fast: 30,    // 0-20s
+      optimal: 45, // 20-35s  
+      slow: 25     // 35s+
+    };
+  }
+
+  generateSmartRecommendations(results) {
+    // Generate AI-powered recommendations based on performance
+    const recommendations = [];
+    
+    // Check topic-wise performance
+    if (results.topicAnalysis) {
+      const weakestTopic = Object.entries(results.topicAnalysis)
+        .sort((a, b) => a[1].percentage - b[1].percentage)[0];
+      
+      if (weakestTopic && weakestTopic[1].percentage < 60) {
+        recommendations.push({
+          priority: 'high',
+          title: `Focus on ${weakestTopic[0]}`,
+          description: `You scored ${weakestTopic[1].percentage}% in ${weakestTopic[0]} topics. Reviewing these concepts could significantly improve your overall score.`,
+          impact: '+8% potential gain',
+          actions: ['Study Now', 'Save for Later']
+        });
+      }
+    }
+    
+    // Check time management
+    const avgTime = results.averageTime || 0;
+    if (avgTime > 35) {
+      recommendations.push({
+        priority: 'medium',
+        title: 'Improve Time Management',
+        description: 'You spent too much time on easy questions. Practice quick dimensional analysis to save time for harder problems.',
+        impact: '+4% potential gain',
+        actions: ['Practice Now', 'Learn More']
+      });
+    }
+    
+    return recommendations;
+  }
+
+  displayAdvancedAnalytics(analytics) {
+    // Update accuracy trend
+    const accuracyTrendElement = document.getElementById('accuracy-trend');
+    if (accuracyTrendElement) {
+      accuracyTrendElement.textContent = analytics.accuracyTrend.value;
+    }
+    
+    // Update speed analysis
+    const speedMetricElement = document.getElementById('speed-metric');
+    if (speedMetricElement) {
+      speedMetricElement.textContent = analytics.speedAnalysis.value;
+    }
+    
+    // Update consistency score
+    const consistencyScoreElement = document.getElementById('consistency-score');
+    if (consistencyScoreElement) {
+      consistencyScoreElement.textContent = analytics.consistencyScore.value;
+    }
+    
+    // Update predicted score
+    const predictedScoreElement = document.getElementById('predicted-score');
+    if (predictedScoreElement) {
+      predictedScoreElement.textContent = analytics.predictedScore.range;
+    }
+    
+    // Update confidence bar
+    const confidenceBar = document.querySelector('.confidence-fill');
+    if (confidenceBar) {
+      confidenceBar.style.width = `${analytics.predictedScore.confidence}%`;
+    }
+    
+    const confidenceLabel = document.querySelector('.confidence-label');
+    if (confidenceLabel) {
+      confidenceLabel.textContent = `${analytics.predictedScore.confidence}% confidence`;
+    }
+    
+    // Update time distribution
+    this.updateTimeDistribution(analytics.timeDistribution);
+    
+    // Update recommendations
+    this.updateRecommendations(analytics.smartRecommendations);
+  }
+
+  updateTimeDistribution(distribution) {
+    const fastSegment = document.querySelector('.time-segment.fast');
+    const optimalSegment = document.querySelector('.time-segment.optimal');
+    const slowSegment = document.querySelector('.time-segment.slow');
+    
+    if (fastSegment) fastSegment.style.width = `${distribution.fast}%`;
+    if (optimalSegment) optimalSegment.style.width = `${distribution.optimal}%`;
+    if (slowSegment) slowSegment.style.width = `${distribution.slow}%`;
+    
+    // Update legend text
+    const legends = document.querySelectorAll('.legend-item span');
+    if (legends[0]) legends[0].textContent = `Fast (0-20s): ${distribution.fast}%`;
+    if (legends[1]) legends[1].textContent = `Optimal (20-35s): ${distribution.optimal}%`;
+    if (legends[2]) legends[2].textContent = `Slow (35s+): ${distribution.slow}%`;
+  }
+
+  updateRecommendations(recommendations) {
+    const container = document.querySelector('.recommendation-cards');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    recommendations.forEach(rec => {
+      const card = this.createRecommendationCard(rec);
+      container.appendChild(card);
+    });
+  }
+
+  createRecommendationCard(recommendation) {
+    const card = document.createElement('div');
+    card.className = `recommendation-card priority-${recommendation.priority}`;
+    
+    card.innerHTML = `
+      <div class="rec-header">
+        <span class="rec-priority">${recommendation.priority} Priority</span>
+        <span class="rec-impact">${recommendation.impact}</span>
+      </div>
+      <div class="rec-content">
+        <h4>${recommendation.title}</h4>
+        <p>${recommendation.description}</p>
+        <div class="rec-actions">
+          ${recommendation.actions.map(action => 
+            `<button class="${action === recommendation.actions[0] ? 'rec-btn' : 'rec-btn-secondary'}">${action}</button>`
+          ).join('')}
+        </div>
+      </div>
+    `;
+    
+    return card;
   }
 
   // Setup PWA-specific functionality

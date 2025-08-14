@@ -816,6 +816,9 @@ class TestManager {
       this.drawTopicChart(results.topicStats);
       this.drawDifficultyChart(results.difficultyStats);
       
+      // Phase 4: Generate and display advanced analytics
+      this.generateAndDisplayAdvancedAnalytics(results);
+      
       // Display analysis
       this.displayAnalysis(results);
       
@@ -1124,6 +1127,20 @@ class TestManager {
   getCurrentQuestions() {
     const state = this.stateManager.getState();
     return state.customQuestions || window.DEFAULT_QUESTIONS || [];
+  }
+
+  // Phase 4: Generate and display advanced analytics
+  generateAndDisplayAdvancedAnalytics(results) {
+    try {
+      // Access the main app instance to use analytics methods
+      if (window.app && typeof window.app.generateAdvancedAnalytics === 'function') {
+        window.app.generateAdvancedAnalytics(results);
+      } else {
+        console.warn('Advanced analytics not available - app instance not found');
+      }
+    } catch (error) {
+      console.error('Generate advanced analytics error:', error);
+    }
   }
 }
 
