@@ -87,50 +87,71 @@ class MockTestApp {
         switch (id) {
           case 'start-test-btn':
             e.preventDefault();
+            console.log('Start test button clicked');
             this.startTest();
             break;
           case 'resume-test-btn':
             e.preventDefault();
+            console.log('Resume test button clicked');
             this.resumeTest();
             break;
           case 'reset-test-btn':
             e.preventDefault();
+            console.log('Reset test button clicked');
             this.resetTest();
             break;
           case 'exit-exam-btn':
             e.preventDefault();
+            console.log('Exit exam button clicked');
             if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
               this.backToHome();
             }
             break;
           case 'review-answers-btn':
             e.preventDefault();
-            this.testManager.initializeReview();
-            this.viewManager.showView('review-answers');
+            console.log('Review answers button clicked');
+            this.startReviewMode();
             break;
           case 'view-solutions-btn':
             e.preventDefault();
+            console.log('View solutions button clicked');
             this.showSolutionsView();
             break;
           case 'new-test-btn':
             e.preventDefault();
+            console.log('Start new test button clicked');
             this.startNewTest();
             break;
           case 'export-results-btn':
             e.preventDefault();
+            console.log('Export results button clicked');
             this.exportResults();
             break;
           case 'back-to-results-btn':
             e.preventDefault();
+            console.log('Back to results button clicked');
             this.viewManager.showView('result');
             break;
           case 'review-prev-btn':
             e.preventDefault();
+            console.log('Review previous button clicked');
             this.navigateReview(-1);
             break;
           case 'review-next-btn':
             e.preventDefault();
+            console.log('Review next button clicked');
             this.navigateReview(1);
+            break;
+          default:
+            // Handle question navigation buttons
+            if (target.classList.contains('question-nav-btn')) {
+              e.preventDefault();
+              const questionIndex = parseInt(target.dataset.questionIndex);
+              console.log('Question nav button clicked:', questionIndex);
+              if (!isNaN(questionIndex)) {
+                this.goToReviewQuestion(questionIndex);
+              }
+            }
             break;
         }
       });
@@ -540,11 +561,32 @@ class MockTestApp {
     }
   }
 
+  // Start review mode (from results page)
+  startReviewMode() {
+    try {
+      this.testManager.initializeReview();
+      this.viewManager.showView('review-answers');
+      
+      // Ensure the review navigation grid is properly initialized
+      setTimeout(() => {
+        this.updateReviewDisplay(0);
+      }, 100);
+    } catch (error) {
+      console.error('Start review mode error:', error);
+      this.showError('Failed to start review mode');
+    }
+  }
+
   // Show solutions view
   showSolutionsView() {
     try {
       this.testManager.initializeReview();
       this.viewManager.showView('review-answers');
+      
+      // Ensure the review navigation grid is properly initialized
+      setTimeout(() => {
+        this.updateReviewDisplay(0);
+      }, 100);
       
       // Show a message that this is solution mode
       if (window.Utils && window.Utils.showToast) {
@@ -616,6 +658,9 @@ class MockTestApp {
       const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
       const timeSpent = state.timeSpent[questionIndex] || 0;
       
+      // Update question navigation grid
+      this.updateReviewNavigationGrid(questionIndex);
+      
       // Update question number
       const reviewQNum = document.getElementById('review-q-num');
       if (reviewQNum) {
@@ -682,6 +727,51 @@ class MockTestApp {
       
     } catch (error) {
       console.error('Update review display error:', error);
+    }
+  }
+
+  // Update review navigation grid
+  updateReviewNavigationGrid(currentQuestionIndex) {
+    try {
+      const grid = document.getElementById('review-question-grid');
+      if (!grid) return;
+      
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      
+      // Clear existing grid
+      grid.innerHTML = '';
+      
+      // Create navigation buttons for each question
+      currentQuestions.forEach((question, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'question-nav-btn';
+        btn.textContent = index + 1;
+        btn.dataset.questionIndex = index;
+        
+        // Determine status and apply appropriate class
+        const userAnswer = state.answers[index];
+        const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+        
+        if (index === currentQuestionIndex) {
+          btn.classList.add('current');
+        } else if (userAnswer === null) {
+          btn.classList.add('unanswered');
+        } else if (isCorrect) {
+          btn.classList.add('correct');
+        } else {
+          btn.classList.add('incorrect');
+        }
+        
+        // Add click handler for navigation
+        btn.addEventListener('click', () => {
+          this.goToReviewQuestion(index);
+        });
+        
+        grid.appendChild(btn);
+      });
+    } catch (error) {
+      console.error('Update review navigation grid error:', error);
     }
   }
 

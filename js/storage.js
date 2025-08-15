@@ -3,6 +3,11 @@
 
 class Storage {
   constructor() {
+    // Prevent duplicate initialization
+    if (Storage.instance) {
+      return Storage.instance;
+    }
+    
     this.storageKeys = {
       userSettings: 'units-exam-settings',
       testProgress: 'units-exam-progress',
@@ -17,6 +22,9 @@ class Storage {
     this.compressionThreshold = 10000; // Compress data larger than 10KB
     
     this.init();
+    
+    // Store singleton instance
+    Storage.instance = this;
   }
 
   // Initialize storage manager

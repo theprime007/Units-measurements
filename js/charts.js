@@ -3,6 +3,11 @@
 
 class Charts {
   constructor() {
+    // Prevent duplicate initialization
+    if (Charts.instance) {
+      return Charts.instance;
+    }
+    
     this.charts = new Map();
     this.colors = {
       primary: '#1FB8CD',
@@ -17,6 +22,9 @@ class Charts {
     this.chartTheme = 'light';
     
     this.init();
+    
+    // Store singleton instance
+    Charts.instance = this;
   }
 
   // Initialize charts module

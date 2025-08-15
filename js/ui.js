@@ -3,6 +3,11 @@
 
 class UI {
   constructor() {
+    // Prevent duplicate initialization
+    if (UI.instance) {
+      return UI.instance;
+    }
+    
     this.modals = new Map();
     this.toasts = [];
     this.animationQueue = [];
@@ -10,6 +15,9 @@ class UI {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
     this.init();
+    
+    // Store singleton instance
+    UI.instance = this;
   }
 
   // Initialize UI controller
