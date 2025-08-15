@@ -61,23 +61,95 @@ class MockTestApp {
   // Setup all event listeners
   setupEventListeners() {
     try {
-      // Landing view event listeners
-      this.setupLandingEventListeners();
+      // Use event delegation for better reliability with dynamic content
+      this.setupGlobalEventDelegation();
       
-      // Test view event listeners
-      this.setupTestEventListeners();
-      
-      // Result view event listeners
-      this.setupResultEventListeners();
-      
-      // Review answers view event listeners
-      this.setupReviewAnswersEventListeners();
+      // Traditional direct event listeners for static elements
+      this.setupDirectEventListeners();
       
       // Global event listeners
       this.setupGlobalEventListeners();
     } catch (error) {
       console.error('Setup event listeners error:', error);
     }
+  }
+
+  // Setup global event delegation for dynamic content
+  setupGlobalEventDelegation() {
+    // Delegate events on the main app container
+    const appContainer = document.getElementById('app-container');
+    if (appContainer) {
+      appContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        const id = target.id;
+        
+        // Handle button clicks by ID
+        switch (id) {
+          case 'start-test-btn':
+            e.preventDefault();
+            this.startTest();
+            break;
+          case 'resume-test-btn':
+            e.preventDefault();
+            this.resumeTest();
+            break;
+          case 'reset-test-btn':
+            e.preventDefault();
+            this.resetTest();
+            break;
+          case 'exit-exam-btn':
+            e.preventDefault();
+            if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
+              this.backToHome();
+            }
+            break;
+          case 'review-answers-btn':
+            e.preventDefault();
+            this.testManager.initializeReview();
+            this.viewManager.showView('review-answers');
+            break;
+          case 'view-solutions-btn':
+            e.preventDefault();
+            this.showSolutionsView();
+            break;
+          case 'new-test-btn':
+            e.preventDefault();
+            this.startNewTest();
+            break;
+          case 'export-results-btn':
+            e.preventDefault();
+            this.exportResults();
+            break;
+          case 'back-to-results-btn':
+            e.preventDefault();
+            this.viewManager.showView('result');
+            break;
+          case 'review-prev-btn':
+            e.preventDefault();
+            this.navigateReview(-1);
+            break;
+          case 'review-next-btn':
+            e.preventDefault();
+            this.navigateReview(1);
+            break;
+        }
+      });
+    }
+  }
+
+  // Setup traditional direct event listeners
+  setupDirectEventListeners() {
+    // Landing view event listeners
+    this.setupLandingEventListeners();
+    
+    // Test view event listeners  
+    this.setupTestEventListeners();
+    
+    // Result view event listeners
+    this.setupResultEventListeners();
+    
+    // Review answers view event listeners
+    this.setupReviewAnswersEventListeners();
   }
 
   // Setup landing view event listeners
@@ -256,6 +328,20 @@ class MockTestApp {
       });
     }
 
+    // View Solutions button - NEW
+    const viewSolutionsBtn = document.getElementById('view-solutions-btn');
+    if (viewSolutionsBtn) {
+      viewSolutionsBtn.addEventListener('click', () => {
+        this.showSolutionsView();
+      });
+    }
+
+    // Start New Test button - NEW  
+    const newTestBtn = document.getElementById('new-test-btn');
+    if (newTestBtn) {
+      newTestBtn.addEventListener('click', () => this.startNewTest());
+    }
+
     // Restart test button
     const restartBtn = document.getElementById('restart-test-btn');
     if (restartBtn) {
@@ -292,6 +378,20 @@ class MockTestApp {
     const reviewNextBtn = document.getElementById('review-next-btn');
     if (reviewNextBtn) {
       reviewNextBtn.addEventListener('click', () => this.navigateReview(1));
+    }
+
+    // Add event delegation for question navigation in review mode
+    const reviewContainer = document.getElementById('review-answers-view');
+    if (reviewContainer) {
+      reviewContainer.addEventListener('click', (e) => {
+        // Handle question number clicks in review mode
+        if (e.target.matches('.question-nav-item, .question-number')) {
+          const questionIndex = parseInt(e.target.dataset.questionIndex) || parseInt(e.target.textContent);
+          if (questionIndex && questionIndex > 0) {
+            this.goToReviewQuestion(questionIndex - 1); // Convert to 0-based index
+          }
+        }
+      });
     }
   }
 
@@ -424,6 +524,38 @@ class MockTestApp {
     }
   }
 
+  // Start new test (from results page)
+  startNewTest() {
+    if (!confirm('Are you sure you want to start a new test? This will reset all current data.')) {
+      return;
+    }
+    
+    try {
+      this.stateManager.resetState();
+      this.viewManager.showView('landing');
+      this.updateUI();
+    } catch (error) {
+      console.error('Start new test error:', error);
+      this.showError('Failed to start new test');
+    }
+  }
+
+  // Show solutions view
+  showSolutionsView() {
+    try {
+      this.testManager.initializeReview();
+      this.viewManager.showView('review-answers');
+      
+      // Show a message that this is solution mode
+      if (window.Utils && window.Utils.showToast) {
+        window.Utils.showToast('Viewing solutions for all questions', 'info', 3000);
+      }
+    } catch (error) {
+      console.error('Show solutions error:', error);
+      this.showError('Failed to show solutions');
+    }
+  }
+
   // Back to home
   backToHome() {
     try {
@@ -448,6 +580,25 @@ class MockTestApp {
       }
     } catch (error) {
       console.error('Navigate review error:', error);
+    }
+  }
+
+  // Go to specific question in review mode
+  goToReviewQuestion(questionIndex) {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      
+      if (questionIndex >= 0 && questionIndex < currentQuestions.length) {
+        this.stateManager.updateState({ reviewCurrentQ: questionIndex });
+        this.updateReviewDisplay(questionIndex);
+        
+        // Show feedback that navigation happened
+        if (window.Utils && window.Utils.showToast) {
+          window.Utils.showToast(`Jumped to Question ${questionIndex + 1}`, 'success', 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Go to review question error:', error);
     }
   }
 
