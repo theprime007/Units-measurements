@@ -206,32 +206,50 @@ class CustomTimer {
   
   updateDisplay() {
     if (this.element) {
-      this.element.textContent = this.formatTime(this.remainingTime);
+      const newTimeText = this.formatTime(this.remainingTime);
       
-      // Update CSS classes for visual feedback
-      this.element.classList.remove('warning', 'danger', 'paused', 'timer-warning', 'timer-critical', 'timer-normal');
+      // Only update text if it changed to prevent unnecessary DOM updates
+      if (this.element.textContent !== newTimeText) {
+        this.element.textContent = newTimeText;
+      }
+      
+      // Determine new class state
+      let newClasses = [];
       
       if (this.isPaused) {
-        this.element.classList.add('paused');
+        newClasses.push('paused');
       } else {
         // Enhanced logic for question timer (40 seconds) vs exam timer (minutes)
         if (this.isQuestionTimer) {
           const secondsRemaining = Math.ceil(this.remainingTime / 1000);
           if (secondsRemaining <= 5) {
-            this.element.classList.add('timer-critical', 'danger');
+            newClasses.push('timer-critical', 'danger');
           } else if (secondsRemaining <= 10) {
-            this.element.classList.add('timer-warning', 'warning');
+            newClasses.push('timer-warning', 'warning');
           } else {
-            this.element.classList.add('timer-normal');
+            newClasses.push('timer-normal');
           }
         } else {
           const remainingMinutes = this.remainingTime / (60 * 1000);
           if (remainingMinutes <= 5) {
-            this.element.classList.add('danger');
+            newClasses.push('danger');
           } else if (remainingMinutes <= 10) {
-            this.element.classList.add('warning');
+            newClasses.push('warning');
           }
         }
+      }
+      
+      // Only update classes if they changed to prevent blinking
+      const allTimerClasses = ['warning', 'danger', 'paused', 'timer-warning', 'timer-critical', 'timer-normal'];
+      const currentClasses = allTimerClasses.filter(cls => this.element.classList.contains(cls));
+      const classesChanged = newClasses.length !== currentClasses.length || 
+                           !newClasses.every(cls => currentClasses.includes(cls));
+      
+      if (classesChanged) {
+        // Remove all timer-related classes
+        this.element.classList.remove(...allTimerClasses);
+        // Add new classes
+        this.element.classList.add(...newClasses);
       }
     }
     

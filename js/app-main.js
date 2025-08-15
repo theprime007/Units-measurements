@@ -98,21 +98,25 @@ class MockTestApp {
         switch (id) {
           case 'start-test-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Start test button clicked');
             this.startTest();
             break;
           case 'resume-test-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Resume test button clicked');
             this.resumeTest();
             break;
           case 'reset-test-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Reset test button clicked');
             this.resetTest();
             break;
           case 'exit-exam-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Exit exam button clicked');
             if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
               this.backToHome();
@@ -120,66 +124,79 @@ class MockTestApp {
             break;
           case 'review-answers-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Review answers button clicked');
             this.startReviewMode();
             break;
           case 'view-solutions-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('View solutions button clicked');
             this.showSolutionsView();
             break;
           case 'new-test-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Start new test button clicked');
             this.startNewTest();
             break;
           case 'restart-test-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Restart test button clicked');
             this.restartTest();
             break;
           case 'export-results-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Export results button clicked');
             this.exportResults();
             break;
           case 'back-home-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Back to home button clicked');
             this.backToHome();
             break;
           case 'back-to-results-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Back to results button clicked');
             this.viewManager.showView('result');
             break;
           case 'review-prev-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Review previous button clicked');
             this.navigateReview(-1);
             break;
           case 'review-next-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Review next button clicked');
             this.navigateReview(1);
             break;
           case 'prev-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Previous question button clicked');
             if (this.testManager) this.testManager.previousQuestion();
             break;
           case 'next-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Next question button clicked');
             if (this.testManager) this.testManager.nextQuestion();
             break;
           case 'submit-test-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Submit test button clicked');
             if (this.testManager) this.testManager.submitTest();
             break;
           case 'bookmark-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Bookmark button clicked');
             if (this.testManager) {
               this.testManager.toggleBookmark();
@@ -189,11 +206,13 @@ class MockTestApp {
             break;
           case 'clear-answer-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Clear answer button clicked');
             if (this.testManager) this.testManager.clearAnswer();
             break;
           case 'review-panel-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Review panel button clicked');
             if (this.testManager) {
               this.testManager.updateReviewGrid();
@@ -202,11 +221,13 @@ class MockTestApp {
             break;
           case 'close-review-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Close review panel button clicked');
             this.viewManager.hideModal('review-panel');
             break;
           case 'submit-from-review-btn':
             e.preventDefault();
+            e.stopPropagation();
             console.log('Submit from review button clicked');
             this.viewManager.hideModal('review-panel');
             if (this.testManager) this.testManager.submitTest();
@@ -215,6 +236,7 @@ class MockTestApp {
             // Handle question navigation buttons
             if (target.classList.contains('question-nav-btn')) {
               e.preventDefault();
+              e.stopPropagation();
               const questionIndex = parseInt(target.dataset.questionIndex);
               console.log('Question nav button clicked:', questionIndex);
               if (!isNaN(questionIndex)) {
@@ -224,6 +246,7 @@ class MockTestApp {
             // Handle review question navigation
             else if (target.matches('.question-nav-item, .question-number')) {
               e.preventDefault();
+              e.stopPropagation();
               const questionIndex = parseInt(target.dataset.questionIndex) || parseInt(target.textContent);
               console.log('Review question nav clicked:', questionIndex);
               if (questionIndex && questionIndex > 0) {
@@ -663,10 +686,11 @@ class MockTestApp {
           btn.classList.add('incorrect');
         }
         
-        // Add click handler for navigation
-        btn.addEventListener('click', () => {
-          this.goToReviewQuestion(index);
-        });
+        // Event handler will be handled by global event delegation
+        // btn.addEventListener('click', () => {
+        //   this.goToReviewQuestion(index);
+        // });
+        // Removed direct event listener to prevent duplicates
         
         grid.appendChild(btn);
       });
