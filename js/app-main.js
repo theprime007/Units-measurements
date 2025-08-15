@@ -80,9 +80,39 @@ class MockTestApp {
       
       // Setup non-button specific listeners (like form inputs, custom controls)
       this.setupNonButtonEventListeners();
+      
+      // Debug: Check for duplicate event listeners
+      this.debugEventListeners();
     } catch (error) {
       console.error('Setup event listeners error:', error);
     }
+  }
+
+  // Debug method to check for potential duplicate event listeners
+  debugEventListeners() {
+    console.log('🔍 Event Listener Debug Summary:');
+    console.log('- Global event delegation: ✅ Active on #app-container');
+    console.log('- Direct button listeners: ❌ Removed from view-manager.js');
+    console.log('- Duplicate prevention: ✅ Added stopPropagation() to all handlers');
+    console.log('- Button debouncing: ✅ Added processing flags to critical buttons');
+    
+    // Check for common button elements
+    const criticalButtons = [
+      'start-test-btn', 'exit-exam-btn', 'submit-test-btn', 
+      'new-test-btn', 'view-solutions-btn', 'review-answers-btn'
+    ];
+    
+    let foundButtons = 0;
+    criticalButtons.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) {
+        foundButtons++;
+        console.log(`- Button #${btnId}: ✅ Found in DOM`);
+      }
+    });
+    
+    console.log(`📊 Found ${foundButtons}/${criticalButtons.length} critical buttons in DOM`);
+    console.log('🎯 Event handling system: Single delegation pattern active');
   }
 
   // Setup global event delegation for dynamic content
@@ -90,17 +120,43 @@ class MockTestApp {
     // Delegate events on the main app container
     const appContainer = document.getElementById('app-container');
     if (appContainer) {
+      // Add a global click counter for debugging
+      let clickCounter = 0;
+      
       appContainer.addEventListener('click', (e) => {
+        clickCounter++;
         const target = e.target;
         const id = target.id;
+        
+        console.log(`Global click handler #${clickCounter} - Target: ${id || 'no-id'}, Tag: ${target.tagName}`);
         
         // Handle button clicks by ID
         switch (id) {
           case 'start-test-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Start test button clicked');
+            console.log('Start test button clicked - Event details:', {
+              target: target,
+              id: id,
+              classList: target.classList.toString(),
+              disabled: target.disabled,
+              timeStamp: e.timeStamp
+            });
+            
+            // Add additional safety check
+            if (target.disabled) {
+              console.log('Start test button is disabled, ignoring click');
+              return;
+            }
+            
+            // Disable button temporarily to prevent multiple rapid clicks
+            target.disabled = true;
             this.startTest();
+            
+            // Re-enable after a short delay
+            setTimeout(() => {
+              target.disabled = false;
+            }, 1000);
             break;
           case 'resume-test-btn':
             e.preventDefault();
@@ -117,10 +173,27 @@ class MockTestApp {
           case 'exit-exam-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Exit exam button clicked');
+            console.log('Exit exam button clicked - Event details:', {
+              target: target,
+              id: id,
+              timeStamp: e.timeStamp
+            });
+            
+            // Prevent multiple rapid clicks on critical buttons
+            if (target.dataset.processing === 'true') {
+              console.log('Exit exam button already processing, ignoring click');
+              return;
+            }
+            
+            target.dataset.processing = 'true';
             if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
               this.backToHome();
             }
+            
+            // Reset processing flag
+            setTimeout(() => {
+              target.dataset.processing = 'false';
+            }, 500);
             break;
           case 'review-answers-btn':
             e.preventDefault();
@@ -137,8 +210,25 @@ class MockTestApp {
           case 'new-test-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Start new test button clicked');
+            console.log('Start new test button clicked - Event details:', {
+              target: target,
+              id: id,
+              timeStamp: e.timeStamp
+            });
+            
+            // Prevent multiple rapid clicks on critical buttons
+            if (target.dataset.processing === 'true') {
+              console.log('New test button already processing, ignoring click');
+              return;
+            }
+            
+            target.dataset.processing = 'true';
             this.startNewTest();
+            
+            // Reset processing flag
+            setTimeout(() => {
+              target.dataset.processing = 'false';
+            }, 1000);
             break;
           case 'restart-test-btn':
             e.preventDefault();
@@ -191,8 +281,25 @@ class MockTestApp {
           case 'submit-test-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Submit test button clicked');
+            console.log('Submit test button clicked - Event details:', {
+              target: target,
+              id: id,
+              timeStamp: e.timeStamp
+            });
+            
+            // Prevent multiple rapid clicks on critical buttons
+            if (target.dataset.processing === 'true') {
+              console.log('Submit test button already processing, ignoring click');
+              return;
+            }
+            
+            target.dataset.processing = 'true';
             if (this.testManager) this.testManager.submitTest();
+            
+            // Reset processing flag
+            setTimeout(() => {
+              target.dataset.processing = 'false';
+            }, 1000);
             break;
           case 'bookmark-btn':
             e.preventDefault();

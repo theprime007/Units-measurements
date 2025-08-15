@@ -3702,6 +3702,46 @@ input[type="file"].form-control:focus {
   }
 }
 
+/* Button Improvements for Better Responsiveness */
+.btn {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Prevent rapid clicking */
+.btn[data-processing="true"] {
+  opacity: 0.7;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.btn[data-processing="true"]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: inherit;
+  animation: processingPulse 1s infinite;
+}
+
+@keyframes processingPulse {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.3; }
+}
+
 /* Timer Enhancements */
 .timer-display {
   transition: color 0.3s ease, transform 0.3s ease;
