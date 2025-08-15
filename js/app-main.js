@@ -130,6 +130,9 @@ class MockTestApp {
       // Add a global click counter for debugging
       let clickCounter = 0;
       
+      // Track button processing states to prevent duplicate actions
+      const buttonStates = new Map();
+      
       appContainer.addEventListener('click', (e) => {
         clickCounter++;
         const target = e.target;
@@ -141,111 +144,108 @@ class MockTestApp {
         // Also check if target itself is a button
         const actualTarget = target.tagName === 'BUTTON' ? target : button;
         
-        console.log(`Global click handler #${clickCounter} - Target: ${target.id || 'no-id'}, Tag: ${target.tagName}, Button: ${buttonId || 'none'}, Actual Target: ${actualTarget ? actualTarget.tagName : 'none'}`);
+        // Skip if no button found
+        if (!actualTarget || !buttonId) {
+          return;
+        }
+        
+        console.log(`Global click handler #${clickCounter} - Target: ${target.id || 'no-id'}, Tag: ${target.tagName}, Button: ${buttonId || 'none'}`);
+        
+        // Check if button is already being processed
+        if (buttonStates.get(buttonId)) {
+          console.log(`Button ${buttonId} is already being processed, ignoring click`);
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        
+        // Mark button as processing
+        const setProcessing = (processing) => {
+          buttonStates.set(buttonId, processing);
+          if (actualTarget) {
+            actualTarget.disabled = processing;
+            actualTarget.dataset.processing = processing.toString();
+            if (processing) {
+              actualTarget.classList.add('btn--processing');
+            } else {
+              actualTarget.classList.remove('btn--processing');
+            }
+          }
+        };
         
         // Handle button clicks by ID
         switch (buttonId) {
           case 'start-test-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Start test button clicked - Event details:', {
-              target: actualTarget,
-              id: buttonId,
-              classList: actualTarget ? actualTarget.classList.toString() : 'none',
-              disabled: actualTarget ? actualTarget.disabled : 'none',
-              timeStamp: e.timeStamp
-            });
+            console.log('Start test button clicked');
             
-            // Add additional safety check
-            if (actualTarget && actualTarget.disabled) {
-              console.log('Start test button is disabled, ignoring click');
-              return;
-            }
-            
-            // Disable button temporarily to prevent multiple rapid clicks
-            if (actualTarget) {
-              actualTarget.disabled = true;
-            }
+            setProcessing(true);
             this.startTest();
             
-            // Re-enable after a short delay
-            setTimeout(() => {
-              if (actualTarget) {
-                actualTarget.disabled = false;
-              }
-            }, 1000);
+            setTimeout(() => setProcessing(false), 1000);
             break;
           case 'resume-test-btn':
             e.preventDefault();
             e.stopPropagation();
             console.log('Resume test button clicked');
+            
+            setProcessing(true);
             this.resumeTest();
+            setTimeout(() => setProcessing(false), 500);
             break;
+            
           case 'reset-test-btn':
             e.preventDefault();
             e.stopPropagation();
             console.log('Reset test button clicked');
+            
+            setProcessing(true);
             this.resetTest();
+            setTimeout(() => setProcessing(false), 500);
             break;
+            
           case 'exit-exam-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Exit exam button clicked - Event details:', {
-              target: target,
-              id: id,
-              timeStamp: e.timeStamp
-            });
+            console.log('Exit exam button clicked');
             
-            // Prevent multiple rapid clicks on critical buttons
-            if (target.dataset.processing === 'true') {
-              console.log('Exit exam button already processing, ignoring click');
-              return;
-            }
+            setProcessing(true);
             
-            target.dataset.processing = 'true';
             if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
               this.backToHome();
             }
             
-            // Reset processing flag
-            setTimeout(() => {
-              target.dataset.processing = 'false';
-            }, 500);
+            setTimeout(() => setProcessing(false), 500);
             break;
           case 'review-answers-btn':
             e.preventDefault();
             e.stopPropagation();
             console.log('Review answers button clicked');
+            
+            setProcessing(true);
             this.startReviewMode();
+            setTimeout(() => setProcessing(false), 500);
             break;
+            
           case 'view-solutions-btn':
             e.preventDefault();
             e.stopPropagation();
             console.log('View solutions button clicked');
+            
+            setProcessing(true);
             this.showSolutionsView();
+            setTimeout(() => setProcessing(false), 500);
             break;
+            
           case 'new-test-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Start new test button clicked - Event details:', {
-              target: target,
-              id: id,
-              timeStamp: e.timeStamp
-            });
+            console.log('Start new test button clicked');
             
-            // Prevent multiple rapid clicks on critical buttons
-            if (target.dataset.processing === 'true') {
-              console.log('New test button already processing, ignoring click');
-              return;
-            }
-            
-            target.dataset.processing = 'true';
+            setProcessing(true);
             this.startNewTest();
-            
-            // Reset processing flag
-            setTimeout(() => {
-              target.dataset.processing = 'false';
-            }, 1000);
+            setTimeout(() => setProcessing(false), 1000);
             break;
           case 'restart-test-btn':
             e.preventDefault();
@@ -298,25 +298,11 @@ class MockTestApp {
           case 'submit-test-btn':
             e.preventDefault();
             e.stopPropagation();
-            console.log('Submit test button clicked - Event details:', {
-              target: target,
-              id: id,
-              timeStamp: e.timeStamp
-            });
+            console.log('Submit test button clicked');
             
-            // Prevent multiple rapid clicks on critical buttons
-            if (target.dataset.processing === 'true') {
-              console.log('Submit test button already processing, ignoring click');
-              return;
-            }
-            
-            target.dataset.processing = 'true';
+            setProcessing(true);
             if (this.testManager) this.testManager.submitTest();
-            
-            // Reset processing flag
-            setTimeout(() => {
-              target.dataset.processing = 'false';
-            }, 1000);
+            setTimeout(() => setProcessing(false), 1000);
             break;
           case 'bookmark-btn':
             e.preventDefault();

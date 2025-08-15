@@ -273,6 +273,106 @@ class Utils {
       }
     }
   }
+
+  // DOM Utilities for performance optimization
+  static domCache = new Map();
+
+  // Cached DOM query - improves performance by avoiding repetitive queries
+  static getElement(selector, useCache = true) {
+    if (useCache && Utils.domCache.has(selector)) {
+      const element = Utils.domCache.get(selector);
+      // Verify element is still in DOM
+      if (element && document.contains(element)) {
+        return element;
+      } else {
+        Utils.domCache.delete(selector);
+      }
+    }
+
+    const element = document.querySelector(selector);
+    if (element && useCache) {
+      Utils.domCache.set(selector, element);
+    }
+    return element;
+  }
+
+  // Cached DOM query for multiple elements
+  static getElements(selector, useCache = false) {
+    if (useCache && Utils.domCache.has(selector)) {
+      return Utils.domCache.get(selector);
+    }
+
+    const elements = document.querySelectorAll(selector);
+    if (useCache) {
+      Utils.domCache.set(selector, elements);
+    }
+    return elements;
+  }
+
+  // Clear DOM cache (useful when DOM structure changes significantly)
+  static clearDOMCache() {
+    Utils.domCache.clear();
+  }
+
+  // Batch DOM operations to minimize reflows
+  static batchDOMUpdates(updateFn) {
+    // Use requestAnimationFrame to batch DOM updates
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        const result = updateFn();
+        resolve(result);
+      });
+    });
+  }
+
+  // Debounce function to prevent excessive calls
+  static debounce(func, wait, immediate = false) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        timeout = null;
+        if (!immediate) func.apply(this, args);
+      };
+      const callNow = immediate && !timeout;
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+      if (callNow) func.apply(this, args);
+    };
+  }
+
+  // Throttle function to limit execution frequency
+  static throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+      if (!inThrottle) {
+        func.apply(this, args);
+        inThrottle = true;
+        setTimeout(() => inThrottle = false, limit);
+      }
+    };
+  }
+
+  // Performance monitoring utility
+  static performanceMonitor = {
+    timers: new Map(),
+    
+    start(label) {
+      this.timers.set(label, performance.now());
+    },
+    
+    end(label, logResult = true) {
+      const startTime = this.timers.get(label);
+      if (startTime) {
+        const duration = performance.now() - startTime;
+        this.timers.delete(label);
+        if (logResult) {
+          console.log(`Performance: ${label} took ${duration.toFixed(2)}ms`);
+        }
+        return duration;
+      }
+      return null;
+    }
+  };
 }
 
 // Export for use in other modules

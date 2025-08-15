@@ -466,8 +466,37 @@ pre code {
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Button Processing State */
+.btn--processing {
+  opacity: 0.7;
+  cursor: not-allowed;
+  pointer-events: none;
+  position: relative;
+}
+
+.btn--processing::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: btn-spinner 0.8s linear infinite;
+}
+
+@keyframes btn-spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 }
 
 /* Form elements */
