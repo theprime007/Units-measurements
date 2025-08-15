@@ -556,17 +556,23 @@ class MockTestApp {
       switch (event.key) {
         case 'ArrowLeft':
           event.preventDefault();
-          this.testManager.previousQuestion();
+          if (window.testManager && typeof window.testManager.previousQuestion === 'function') {
+            window.testManager.previousQuestion();
+          }
           break;
         case 'ArrowRight':
           event.preventDefault();
-          this.testManager.nextQuestion();
+          if (window.testManager && typeof window.testManager.nextQuestion === 'function') {
+            window.testManager.nextQuestion();
+          }
           break;
         case 'b':
         case 'B':
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
-            this.testManager.toggleBookmark();
+            if (window.testManager && typeof window.testManager.toggleBookmark === 'function') {
+              window.testManager.toggleBookmark();
+            }
           }
           break;
         case '1':
@@ -576,7 +582,9 @@ class MockTestApp {
           if (!event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault();
             const optionIndex = parseInt(event.key) - 1;
-            this.testManager.selectOption(optionIndex);
+            if (window.testManager && typeof window.testManager.selectOption === 'function') {
+              window.testManager.selectOption(optionIndex);
+            }
           }
           break;
       }
@@ -598,13 +606,32 @@ class MockTestApp {
       // Initialize test state
       this.stateManager.startTest();
       
-      // Start timers and auto-save
-      this.testManager.startMainTimer();
-      this.testManager.startAutoSave();
-      
-      // Show test view and display first question
-      this.viewManager.showView('test');
-      this.testManager.displayQuestion();
+      // Start timers and auto-save - check if testManager is available
+      if (window.testManager) {
+        if (typeof window.testManager.startMainTimer === 'function') {
+          window.testManager.startMainTimer();
+        } else {
+          console.warn('⚠️ testManager.startMainTimer not available');
+        }
+        
+        if (typeof window.testManager.startAutoSave === 'function') {
+          window.testManager.startAutoSave();
+        } else {
+          console.warn('⚠️ testManager.startAutoSave not available');
+        }
+        
+        // Show test view and display first question
+        this.viewManager.showView('test');
+        
+        if (typeof window.testManager.displayQuestion === 'function') {
+          window.testManager.displayQuestion();
+        } else {
+          console.warn('⚠️ testManager.displayQuestion not available');
+        }
+      } else {
+        console.warn('⚠️ testManager not available');
+        this.showError('Test manager not ready. Please refresh the page.');
+      }
       
     } catch (error) {
       console.error('Start test error:', error);
@@ -615,13 +642,25 @@ class MockTestApp {
   // Resume existing test
   resumeTest() {
     try {
-      // Resume timers
-      this.testManager.startMainTimer();
-      this.testManager.startAutoSave();
-      
-      // Show test view and current question
-      this.viewManager.showView('test');
-      this.testManager.displayQuestion();
+      // Resume timers - check if testManager is available
+      if (window.testManager) {
+        if (typeof window.testManager.startMainTimer === 'function') {
+          window.testManager.startMainTimer();
+        }
+        if (typeof window.testManager.startAutoSave === 'function') {
+          window.testManager.startAutoSave();
+        }
+        
+        // Show test view and current question
+        this.viewManager.showView('test');
+        
+        if (typeof window.testManager.displayQuestion === 'function') {
+          window.testManager.displayQuestion();
+        }
+      } else {
+        console.warn('⚠️ testManager not available for resume');
+        this.showError('Test manager not ready. Please refresh the page.');
+      }
       
     } catch (error) {
       console.error('Resume test error:', error);
@@ -680,7 +719,9 @@ class MockTestApp {
   // Start review mode (from results page)
   startReviewMode() {
     try {
-      this.testManager.initializeReview();
+      if (window.testManager && typeof window.testManager.initializeReview === 'function') {
+        window.testManager.initializeReview();
+      }
       this.viewManager.showView('review-answers');
       
       // Ensure the review navigation grid is properly initialized
@@ -696,7 +737,9 @@ class MockTestApp {
   // Show solutions view
   showSolutionsView() {
     try {
-      this.testManager.initializeReview();
+      if (window.testManager && typeof window.testManager.initializeReview === 'function') {
+        window.testManager.initializeReview();
+      }
       this.viewManager.showView('review-answers');
       
       // Ensure the review navigation grid is properly initialized
@@ -816,8 +859,8 @@ class MockTestApp {
       
       // Update time spent
       const questionTimeSpent = document.getElementById('question-time-spent');
-      if (questionTimeSpent) {
-        questionTimeSpent.textContent = this.testManager.formatTime(timeSpent * 1000);
+      if (questionTimeSpent && window.testManager && typeof window.testManager.formatTime === 'function') {
+        questionTimeSpent.textContent = window.testManager.formatTime(timeSpent * 1000);
       }
       
       // Update status
@@ -1116,9 +1159,13 @@ class MockTestApp {
 
   // Show error message
   showError(message) {
-    // Simple error display - you can enhance this
-    alert(message);
-    console.error(message);
+    console.error('Error:', message);
+    if (window.Utils && window.Utils.showToast) {
+      window.Utils.showToast(message, 'error');
+    } else {
+      // Fallback to alert if toast is not available
+      alert(message);
+    }
   }
 
   // Get current questions
