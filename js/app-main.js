@@ -172,6 +172,16 @@ class MockTestApp {
 
   // Setup test view event listeners
   setupTestEventListeners() {
+    // Exit exam button
+    const exitBtn = document.getElementById('exit-exam-btn');
+    if (exitBtn) {
+      exitBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
+          this.backToHome();
+        }
+      });
+    }
+
     // Navigation buttons
     const prevBtn = document.getElementById('prev-btn');
     if (prevBtn) {
