@@ -517,7 +517,7 @@ class Charts {
 
   // Destroy all charts
   destroyAll() {
-    this.charts.forEach((chart, id) => {
+    this.charts.forEach((chart, id) => { // eslint-disable-line no-unused-vars
       chart.destroy();
     });
     this.charts.clear();

@@ -1,6 +1,8 @@
 // Test Management Module
 // Handles test execution, question display, navigation, and timing
 
+/* global CustomTimer */
+
 class TestManager {
   constructor(stateManager, viewManager, questionManager) {
     this.stateManager = stateManager;

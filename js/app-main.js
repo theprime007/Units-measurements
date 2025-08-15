@@ -1,6 +1,8 @@
 // Main Application Module
 // Handles application initialization, event binding, and core functionality
 
+/* global UI, Charts, AdaptiveSystem, PerformanceAnalytics, StateManager, ViewManager, QuestionManager, TestManager, Utils, AppStorage */
+
 class MockTestApp {
   constructor() {
     this.stateManager = null;
@@ -24,7 +26,7 @@ class MockTestApp {
     
     try {
       // Initialize core modules (singletons)
-      this.storage = new Storage();
+      this.storage = new AppStorage();
       this.ui = new UI();
       this.charts = new Charts();
       
@@ -1821,7 +1823,7 @@ class MockTestApp {
     if (!this.adaptiveSystem || !this.adaptiveSystem.adaptiveSettings.enabled) return;
     
     const state = this.stateManager.getState();
-    const currentQ = state.currentQ;
+    const currentQ = // eslint-disable-line no-unused-vars state.currentQ;
     const answeredCount = Object.keys(state.answers).length;
     
     // Provide insights every 10 questions
@@ -1907,7 +1909,7 @@ class MockTestApp {
       this.testManager.navigateQuestion = function(direction) {
         const result = originalNavigateQuestion.call(this, direction);
         
-        const currentQ = window.app.stateManager.getCurrentQuestion();
+        const currentQ = // eslint-disable-line no-unused-vars window.app.stateManager.getCurrentQuestion();
         const milestones = [10, 25, 40];
         
         if (milestones.includes(currentQ)) {

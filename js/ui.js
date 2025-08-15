@@ -1,6 +1,8 @@
 // User Interface Module
 // Handles modal management, animations, responsive design, and theme control
 
+/* global Utils */
+
 class UI {
   constructor() {
     // Prevent duplicate initialization
