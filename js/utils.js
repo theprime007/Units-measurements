@@ -229,15 +229,150 @@ class Utils {
     }
   }
 
+    // Show toast notification (uses UI module if available)
+  static showToast(message, type = 'info', duration = 3000) {
+    if (window.appUI && window.appUI.showToast) {
+      return window.appUI.showToast(message, type, duration);
+    }
+    
+    // Fallback to console
+    console.log(`Toast (${type}): ${message}`);
+    
+    // In development, show alert for important messages
+    if (Utils.isDevelopment() && (type === 'error' || type === 'warning')) {
+      alert(`${type.toUpperCase()}: ${message}`);
+    }
+  }
+
+  // Show error message
+  static showError(message, title = 'Error') {
+    console.error(`${title}: ${message}`);
+    
+    // Use toast if available
+    if (window.appUI && window.appUI.showToast) {
+      window.appUI.showToast(message, 'error', 5000);
+    } else {
+      // Fallback to alert in development
+      if (Utils.isDevelopment()) {
+        alert(`${title}: ${message}`);
+      }
+    }
+  }
+
   // Show success message
   static showSuccess(message, title = 'Success') {
     console.log(`${title}: ${message}`);
     
-    // In development, show alert
-    if (Utils.isDevelopment()) {
-      alert(`${title}: ${message}`);
+    // Use toast if available
+    if (window.appUI && window.appUI.showToast) {
+      window.appUI.showToast(message, 'success', 3000);
+    } else {
+      // In development, show alert
+      if (Utils.isDevelopment()) {
+        alert(`${title}: ${message}`);
+      }
     }
   }
+
+  // DOM Utilities for performance optimization
+  static domCache = new Map();
+
+  // Cached DOM query - improves performance by avoiding repetitive queries
+  static getElement(selector, useCache = true) {
+    if (useCache && Utils.domCache.has(selector)) {
+      const element = Utils.domCache.get(selector);
+      // Verify element is still in DOM
+      if (element && document.contains(element)) {
+        return element;
+      } else {
+        Utils.domCache.delete(selector);
+      }
+    }
+
+    const element = document.querySelector(selector);
+    if (element && useCache) {
+      Utils.domCache.set(selector, element);
+    }
+    return element;
+  }
+
+  // Cached DOM query for multiple elements
+  static getElements(selector, useCache = false) {
+    if (useCache && Utils.domCache.has(selector)) {
+      return Utils.domCache.get(selector);
+    }
+
+    const elements = document.querySelectorAll(selector);
+    if (useCache) {
+      Utils.domCache.set(selector, elements);
+    }
+    return elements;
+  }
+
+  // Clear DOM cache (useful when DOM structure changes significantly)
+  static clearDOMCache() {
+    Utils.domCache.clear();
+  }
+
+  // Batch DOM operations to minimize reflows
+  static batchDOMUpdates(updateFn) {
+    // Use requestAnimationFrame to batch DOM updates
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        const result = updateFn();
+        resolve(result);
+      });
+    });
+  }
+
+  // Debounce function to prevent excessive calls
+  static debounce(func, wait, immediate = false) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        timeout = null;
+        if (!immediate) func.apply(this, args);
+      };
+      const callNow = immediate && !timeout;
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+      if (callNow) func.apply(this, args);
+    };
+  }
+
+  // Throttle function to limit execution frequency
+  static throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+      if (!inThrottle) {
+        func.apply(this, args);
+        inThrottle = true;
+        setTimeout(() => inThrottle = false, limit);
+      }
+    };
+  }
+
+  // Performance monitoring utility
+  static performanceMonitor = {
+    timers: new Map(),
+    
+    start(label) {
+      this.timers.set(label, performance.now());
+    },
+    
+    end(label, logResult = true) {
+      const startTime = this.timers.get(label);
+      if (startTime) {
+        const duration = performance.now() - startTime;
+        this.timers.delete(label);
+        if (logResult) {
+          console.log(`Performance: ${label} took ${duration.toFixed(2)}ms`);
+        }
+        return duration;
+      }
+      return null;
+    }
+  };
 }
 
 // Export for use in other modules
