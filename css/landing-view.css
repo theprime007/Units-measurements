@@ -773,3 +773,61 @@
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-20px) rotate(180deg); }
 }
+/* === Mobile tap reliability (append at EOF) === */
+
+/* Ensure decorative/visual-only layers never intercept taps */
+.hero-background,
+.hero-gradient,
+.hero-particles {
+  pointer-events: none;
+}
+
+/* Raise and separate CTA from nearby settings to avoid overlap */
+.cta-section {
+  position: relative;
+  z-index: 50;
+  margin-top: 16px;
+}
+#start-test-btn {
+  position: relative;
+  z-index: 51;
+}
+
+/* Decorative parts of labels shouldn’t capture taps */
+.checkbox-label .checkbox-custom,
+.checkbox-label .checkbox-content svg,
+.checkbox-label .checkbox-content .icon,
+.setting-label .label-icon,
+.setting-label .label-icon svg,
+.features-grid .feature-icon,
+.features-grid .feature-icon svg,
+.feature-badges,
+.feature-badges svg {
+  pointer-events: none;
+}
+
+/* Keep the actual controls interactive */
+.checkbox-label input,
+.setting-group select,
+.setting-group input {
+  pointer-events: auto;
+}
+
+/* Ensure the button’s SVG doesn’t steal the event target */
+.cta-section .btn svg,
+.cta-section .btn .btn-icon svg {
+  pointer-events: none;
+}
+
+/* Touch UX improvement */
+.btn,
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Avoid hidden panel overflow hovering over CTA */
+.settings-panel { overflow: visible; }
+
+/* Breathing room below preferences to avoid hit overlap */
+.preferences-section { margin-bottom: 16px; }
