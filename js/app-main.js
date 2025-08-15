@@ -65,8 +65,8 @@ class MockTestApp {
       // Handle dark mode initial state
       this.applyInitialDarkMode();
 
-      // Setup PWA-specific functionality
-      this.setupPWAFeatures();
+      // Setup general application features
+      this.setupAppFeatures();
 
       // Phase 4: Initialize enhanced navigation
       this.initializeEnhancedNavigation();
@@ -1567,8 +1567,8 @@ setupGlobalEventDelegation() {
     return card;
   }
 
-  // Setup PWA-specific functionality
-  setupPWAFeatures() {
+  // Setup general application features
+  setupAppFeatures() {
     // Setup theme handling with UI module
     const themeToggle = document.getElementById('dark-mode');
     if (themeToggle) {
@@ -1583,24 +1583,6 @@ setupGlobalEventDelegation() {
     window.addEventListener('resize', Utils.debounce(() => {
       this.charts.handleResize();
     }, 250));
-
-    // Setup offline/online handlers
-    window.addEventListener('online', () => {
-      this.ui.showToast('Connection restored', 'success');
-    });
-
-    window.addEventListener('offline', () => {
-      this.ui.showToast('You are offline. App will continue to work with limited functionality.', 'warning', 5000);
-    });
-
-    // Setup service worker update notifications
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'SYNC_PROGRESS') {
-          this.ui.showToast(event.data.message, 'info');
-        }
-      });
-    }
 
     // Setup keyboard shortcuts
     document.addEventListener('keydown', (e) => {

@@ -31,8 +31,7 @@
     
     <title>Units & Measurements Mock Test - RRB CBT Practice</title>
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
+
     
     <!-- Preload Critical Resources -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600&display=swap" as="style">
@@ -77,17 +76,6 @@
         <div id="modal-container" role="dialog" aria-hidden="true" class="modal-container"></div>
     </main>
 
-    <!-- Offline indicator -->
-    <div id="offline-indicator" class="offline-indicator hidden" role="status" aria-live="polite">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="1" y1="1" x2="23" y2="23"></line>
-            <path d="m16.72 11.06 10.3 10.3-10.3-10.3v0z"></path>
-            <path d="m7 3.34 1.28.28A19.15 19.15 0 0 1 16.72 11.06"></path>
-            <path d="m20.1 13.81-.81-.81"></path>
-        </svg>
-        <span>You're offline. App will sync when connection is restored.</span>
-    </div>
-
     <!-- External Libraries - Load with error handling -->
     <!-- <script>
       // Load Chart.js with error handling
@@ -115,49 +103,35 @@
     <script src="js/test-manager.js"></script>
     <script src="js/app-main.js"></script>
     
-    <!-- PWA Service Worker Registration -->
+    <!-- Service Worker Cleanup -->
     <script>
-        // Register service worker for PWA functionality
+        // Unregister any existing service workers and clear caches
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
-                    const registration = await navigator.serviceWorker.register('./sw.js');
-                    console.log('Service Worker registered successfully:', registration);
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        console.log('Unregistering service worker:', registration.scope);
+                        await registration.unregister();
+                    }
                     
-                    // Handle service worker updates
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        if (newWorker) {
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // Show update available notification
-                                    if (window.Utils && window.Utils.showToast) {
-                                        window.Utils.showToast('App update available. Refresh to get the latest version.', 'info', 5000);
-                                    }
-                                }
-                            });
-                        }
-                    });
+                    // Clear all caches
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        await Promise.all(
+                            cacheNames.map(cacheName => {
+                                console.log('Deleting cache:', cacheName);
+                                return caches.delete(cacheName);
+                            })
+                        );
+                    }
+                    
+                    console.log('Service worker cleanup completed');
                 } catch (error) {
-                    console.log('Service Worker registration failed:', error);
+                    console.log('Service worker cleanup failed:', error);
                 }
             });
         }
-        
-        // Handle online/offline status
-        window.addEventListener('online', () => {
-            document.getElementById('offline-indicator')?.classList.add('hidden');
-            if (window.Utils && window.Utils.showToast) {
-                window.Utils.showToast('Connection restored', 'success');
-            }
-        });
-        
-        window.addEventListener('offline', () => {
-            document.getElementById('offline-indicator')?.classList.remove('hidden');
-            if (window.Utils && window.Utils.showToast) {
-                window.Utils.showToast('You are offline. App functionality may be limited.', 'warning');
-            }
-        });
         
         // Initialize app when DOM is ready
         document.addEventListener('DOMContentLoaded', async () => {
