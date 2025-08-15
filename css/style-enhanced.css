@@ -1226,3 +1226,51 @@ select.form-control {
 .shadow-sm { box-shadow: var(--shadow-sm) !important; }
 .shadow-md { box-shadow: var(--shadow-md) !important; }
 .shadow-lg { box-shadow: var(--shadow-lg) !important; }
+/* === Mobile tap reliability (append at EOF) === */
+.hero-background,
+.hero-gradient,
+.hero-particles {
+  pointer-events: none;
+}
+
+.cta-section {
+  position: relative;
+  z-index: 50;
+  margin-top: 16px;
+}
+#start-test-btn {
+  position: relative;
+  z-index: 51;
+}
+
+.checkbox-label .checkbox-custom,
+.checkbox-label .checkbox-content svg,
+.checkbox-label .checkbox-content .icon,
+.setting-label .label-icon,
+.setting-label .label-icon svg,
+.features-grid .feature-icon,
+.features-grid .feature-icon svg,
+.feature-badges,
+.feature-badges svg {
+  pointer-events: none;
+}
+
+.checkbox-label input,
+.setting-group select,
+.setting-group input {
+  pointer-events: auto;
+}
+
+.cta-section .btn svg,
+.cta-section .btn .btn-icon svg {
+  pointer-events: none;
+}
+
+.btn,
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-panel { overflow: visible; }
+.preferences-section { margin-bottom: 16px; }
