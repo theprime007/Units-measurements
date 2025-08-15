@@ -10,6 +10,8 @@ class MockTestApp {
     this.ui = null;
     this.charts = null;
     this.storage = null;
+    this.adaptiveSystem = null; // Phase 5: Adaptive Learning
+    this.performanceAnalytics = null; // Phase 5: Advanced Analytics
   }
 
   // Initialize the application
@@ -19,6 +21,10 @@ class MockTestApp {
       this.storage = new Storage();
       this.ui = new UI();
       this.charts = new Charts();
+      
+      // Phase 5: Initialize advanced modules
+      this.adaptiveSystem = new AdaptiveSystem();
+      this.performanceAnalytics = new PerformanceAnalytics();
       
       // Initialize managers
       this.stateManager = new StateManager();
@@ -30,6 +36,8 @@ class MockTestApp {
       window.appStorage = this.storage;
       window.appUI = this.ui;
       window.appCharts = this.charts;
+      window.appAdaptive = this.adaptiveSystem; // Phase 5
+      window.appAnalytics = this.performanceAnalytics; // Phase 5
       window.app = this; // Phase 4: Make app instance available globally
 
       // Initialize managers
@@ -50,8 +58,11 @@ class MockTestApp {
 
       // Phase 4: Initialize enhanced navigation
       this.initializeEnhancedNavigation();
+      
+      // Phase 5: Initialize advanced features
+      this.initializePhase5Features();
 
-      console.log('MockTestApp initialized successfully');
+      console.log('MockTestApp initialized successfully - Phase 5 Complete');
     } catch (error) {
       console.error('App initialization error:', error);
       this.showError('Failed to initialize application');
@@ -1552,6 +1563,350 @@ class MockTestApp {
     }
   }
 
+  // Phase 5: Initialize advanced features
+  initializePhase5Features() {
+    try {
+      // Setup adaptive learning integration
+      this.setupAdaptiveLearningIntegration();
+      
+      // Setup performance analytics integration
+      this.setupPerformanceAnalyticsIntegration();
+      
+      // Setup advanced UI components
+      this.setupAdvancedUIComponents();
+      
+      // Initialize real-time feedback system
+      this.setupRealTimeFeedback();
+      
+      console.log('Phase 5 features initialized successfully');
+    } catch (error) {
+      console.error('Phase 5 initialization error:', error);
+    }
+  }
+  
+  // Setup adaptive learning integration
+  setupAdaptiveLearningIntegration() {
+    // Override question selection to use adaptive recommendations
+    const originalGetQuestions = this.getCurrentQuestions.bind(this);
+    this.getCurrentQuestions = () => {
+      const baseQuestions = originalGetQuestions();
+      if (this.adaptiveSystem && this.adaptiveSystem.adaptiveSettings.enabled) {
+        return this.adaptiveSystem.getRecommendedQuestions(baseQuestions);
+      }
+      return baseQuestions;
+    };
+    
+    // Override timer duration to use adaptive timing
+    if (this.testManager && this.testManager.startQuestionTimer) {
+      const originalStartTimer = this.testManager.startQuestionTimer.bind(this.testManager);
+      this.testManager.startQuestionTimer = function(questionDifficulty, topic) {
+        if (window.appAdaptive && window.appAdaptive.adaptiveSettings.intelligentTimer) {
+          const adaptiveDuration = window.appAdaptive.getAdaptiveTimerDuration(questionDifficulty, topic);
+          // Override the timer duration here
+          this.questionTimerDuration = adaptiveDuration;
+        }
+        return originalStartTimer.call(this);
+      };
+    }
+  }
+  
+  // Setup performance analytics integration
+  setupPerformanceAnalyticsIntegration() {
+    // Hook into test completion to record analytics
+    const originalSubmitTest = this.testManager ? this.testManager.submitTest : null;
+    if (originalSubmitTest && this.testManager) {
+      this.testManager.submitTest = (...args) => {
+        const result = originalSubmitTest.apply(this.testManager, args);
+        
+        // Record performance data for analytics
+        setTimeout(() => {
+          this.recordTestPerformanceForAnalytics();
+        }, 1000);
+        
+        return result;
+      };
+    }
+  }
+  
+  // Record test performance for analytics
+  recordTestPerformanceForAnalytics() {
+    try {
+      const state = this.stateManager.getState();
+      const results = this.stateManager.getResults();
+      
+      if (results && this.performanceAnalytics) {
+        const testData = {
+          score: results.percentage,
+          totalQuestions: results.total,
+          correctAnswers: results.correct,
+          timeSpent: results.totalTime,
+          averageTimePerQuestion: results.averageTime,
+          topicBreakdown: results.topicAnalysis,
+          difficultyBreakdown: results.difficultyAnalysis,
+          questionDetails: state.answers,
+          settings: {
+            testDuration: state.testDuration,
+            enhancedTimer: state.enhancedTimer,
+            isRRBMode: state.isRRBMode
+          }
+        };
+        
+        this.performanceAnalytics.recordTestPerformance(testData);
+        
+        // Update adaptive system with individual question performance
+        if (this.adaptiveSystem) {
+          const currentQuestions = this.getCurrentQuestions();
+          Object.entries(state.answers).forEach(([questionIndex, answer]) => {
+            const qIndex = parseInt(questionIndex);
+            const question = currentQuestions[qIndex];
+            if (question && answer !== null) {
+              const isCorrect = answer === question.correctIndex;
+              const timeSpent = state.timeSpent[qIndex] || 0;
+              this.adaptiveSystem.recordAnswer(qIndex, isCorrect, timeSpent, question.difficulty, question.topic);
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to record test performance for analytics:', error);
+    }
+  }
+  
+  // Setup advanced UI components
+  setupAdvancedUIComponents() {
+    // Add performance insights to results view
+    this.addPerformanceInsightComponents();
+    
+    // Add adaptive learning status indicators
+    this.addAdaptiveLearningIndicators();
+    
+    // Setup smart notifications
+    this.setupSmartNotifications();
+  }
+  
+  // Add performance insight components
+  addPerformanceInsightComponents() {
+    const resultView = document.getElementById('result-view');
+    if (!resultView) return;
+    
+    // Check if analytics section already exists
+    if (resultView.querySelector('.advanced-analytics-section')) return;
+    
+    const analyticsSection = document.createElement('div');
+    analyticsSection.className = 'advanced-analytics-section phase5-feature';
+    analyticsSection.innerHTML = `
+      <div class="analytics-header">
+        <h3>🧠 AI Performance Insights</h3>
+        <p>Advanced analytics powered by machine learning</p>
+      </div>
+      
+      <div class="insights-grid">
+        <div class="insight-card">
+          <div class="insight-icon">📈</div>
+          <div class="insight-content">
+            <h4>Learning Velocity</h4>
+            <div class="insight-value" id="learning-velocity">--</div>
+            <div class="insight-description">Points improvement per test</div>
+          </div>
+        </div>
+        
+        <div class="insight-card">
+          <div class="insight-icon">🎯</div>
+          <div class="insight-content">
+            <h4>Consistency Index</h4>
+            <div class="insight-value" id="consistency-index">--</div>
+            <div class="insight-description">Performance stability score</div>
+          </div>
+        </div>
+        
+        <div class="insight-card">
+          <div class="insight-icon">🔮</div>
+          <div class="insight-content">
+            <h4>Next Score Prediction</h4>
+            <div class="insight-value" id="score-prediction">--</div>
+            <div class="insight-description">AI-predicted next result</div>
+          </div>
+        </div>
+        
+        <div class="insight-card">
+          <div class="insight-icon">⏱️</div>
+          <div class="insight-content">
+            <h4>Time to Mastery</h4>
+            <div class="insight-value" id="time-to-mastery">--</div>
+            <div class="insight-description">Estimated practice needed</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="ai-recommendations" id="ai-recommendations">
+        <!-- AI recommendations will be populated here -->
+      </div>
+    `;
+    
+    // Insert before existing content
+    const firstChild = resultView.firstElementChild;
+    if (firstChild) {
+      resultView.insertBefore(analyticsSection, firstChild);
+    } else {
+      resultView.appendChild(analyticsSection);
+    }
+  }
+  
+  // Add adaptive learning indicators
+  addAdaptiveLearningIndicators() {
+    const testView = document.getElementById('test-view');
+    if (!testView || testView.querySelector('.adaptive-indicators')) return;
+    
+    const indicators = document.createElement('div');
+    indicators.className = 'adaptive-indicators phase5-feature';
+    indicators.innerHTML = `
+      <div class="adaptive-status" id="adaptive-status">
+        <div class="status-indicator">
+          <span class="status-icon">🧠</span>
+          <span class="status-text">AI Adaptive Mode</span>
+          <span class="status-badge" id="adaptive-badge">OFF</span>
+        </div>
+      </div>
+    `;
+    
+    const testHeader = testView.querySelector('.test-header');
+    if (testHeader) {
+      testHeader.appendChild(indicators);
+    }
+  }
+  
+  // Setup real-time feedback system
+  setupRealTimeFeedback() {
+    // Monitor answer patterns and provide real-time insights
+    const originalSelectOption = this.testManager ? this.testManager.selectOption : null;
+    if (originalSelectOption && this.testManager) {
+      this.testManager.selectOption = function(optionIndex) {
+        const result = originalSelectOption.call(this, optionIndex);
+        
+        // Trigger real-time feedback
+        setTimeout(() => {
+          window.app.provideLiveInsight();
+        }, 500);
+        
+        return result;
+      };
+    }
+  }
+  
+  // Provide live insights during test
+  provideLiveInsight() {
+    if (!this.adaptiveSystem || !this.adaptiveSystem.adaptiveSettings.enabled) return;
+    
+    const state = this.stateManager.getState();
+    const currentQ = state.currentQ;
+    const answeredCount = Object.keys(state.answers).length;
+    
+    // Provide insights every 10 questions
+    if (answeredCount > 0 && answeredCount % 10 === 0) {
+      const insights = this.generateLiveInsights(state);
+      this.showLiveInsightNotification(insights);
+    }
+  }
+  
+  // Generate live insights
+  generateLiveInsights(state) {
+    const answeredQuestions = Object.keys(state.answers).length;
+    const correctAnswers = Object.entries(state.answers).filter(([_, answer]) => {
+      const qIndex = parseInt(_);
+      const question = this.getCurrentQuestions()[qIndex];
+      return question && answer === question.correctIndex;
+    }).length;
+    
+    const accuracy = correctAnswers / answeredQuestions;
+    const avgTime = Object.values(state.timeSpent).reduce((sum, time) => sum + time, 0) / answeredQuestions;
+    
+    let message = '';
+    let type = 'info';
+    
+    if (accuracy > 0.8) {
+      message = `🎯 Excellent! ${Math.round(accuracy * 100)}% accuracy. Keep it up!`;
+      type = 'success';
+    } else if (accuracy < 0.5) {
+      message = `⚠️ Consider slowing down. Focus on accuracy over speed.`;
+      type = 'warning';
+    } else if (avgTime > 35) {
+      message = `⏱️ Try to speed up. Aim for under 30 seconds per question.`;
+      type = 'info';
+    } else {
+      message = `📊 Good pace! ${Math.round(accuracy * 100)}% accuracy at ${Math.round(avgTime)}s avg.`;
+      type = 'success';
+    }
+    
+    return { message, type, accuracy, avgTime };
+  }
+  
+  // Show live insight notification
+  showLiveInsightNotification(insights) {
+    if (window.Utils && window.Utils.showToast) {
+      window.Utils.showToast(insights.message, insights.type, 4000);
+    }
+  }
+  
+  // Setup smart notifications
+  setupSmartNotifications() {
+    // Setup intelligent break reminders
+    this.setupIntelligentBreaks();
+    
+    // Setup performance milestone notifications
+    this.setupMilestoneNotifications();
+  }
+  
+  // Setup intelligent break reminders
+  setupIntelligentBreaks() {
+    let testStartTime = null;
+    
+    // Override test start to track time
+    const originalStartTest = this.startTest.bind(this);
+    this.startTest = function() {
+      testStartTime = Date.now();
+      
+      // Setup break reminder after 45 minutes
+      setTimeout(() => {
+        if (window.Utils && window.Utils.showToast) {
+          window.Utils.showToast('💡 Consider taking a short break to maintain focus', 'info', 5000);
+        }
+      }, 45 * 60 * 1000);
+      
+      return originalStartTest.apply(this, arguments);
+    };
+  }
+  
+  // Setup milestone notifications
+  setupMilestoneNotifications() {
+    // Override question navigation to track milestones
+    const originalNavigateQuestion = this.testManager ? this.testManager.navigateQuestion : null;
+    if (originalNavigateQuestion && this.testManager) {
+      this.testManager.navigateQuestion = function(direction) {
+        const result = originalNavigateQuestion.call(this, direction);
+        
+        const currentQ = window.app.stateManager.getCurrentQuestion();
+        const milestones = [10, 25, 40];
+        
+        if (milestones.includes(currentQ)) {
+          const answered = Object.keys(window.app.stateManager.getAnswers()).length;
+          const accuracy = window.app.calculateCurrentAccuracy();
+          
+          setTimeout(() => {
+            if (window.Utils && window.Utils.showToast) {
+              window.Utils.showToast(
+                `🎯 Milestone: ${currentQ}/50 questions! Current accuracy: ${Math.round(accuracy * 100)}%`,
+                accuracy > 0.7 ? 'success' : 'info',
+                3000
+              );
+            }
+          }, 500);
+        }
+        
+        return result;
+      };
+    }
+  }
+  
   // Enhanced load progress with storage module
   loadProgress() {
     try {
@@ -1566,6 +1921,7 @@ class MockTestApp {
       return false;
     }
   }
+}
 }
 
 // Make MockTestApp globally available

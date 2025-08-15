@@ -82,7 +82,8 @@ class CustomTimer {
   
   reset() {
     this.stop();
-    this.remainingTime = this.duration * 60 * 1000;
+    this.remainingTime = this.duration * (this.isQuestionTimer ? 1000 : 60 * 1000);
+    this.totalTime = this.remainingTime;
     this.pausedTime = 0;
     this.warningsTriggered.clear();
     this.updateDisplay();
@@ -100,7 +101,14 @@ class CustomTimer {
   
   tick() {
     const elapsed = Date.now() - this.startTime;
-    this.remainingTime = Math.max(0, (this.duration * 60 * 1000) - elapsed);
+    
+    if (this.isQuestionTimer) {
+      // For question timer, duration is in seconds
+      this.remainingTime = Math.max(0, (this.duration * 1000) - elapsed);
+    } else {
+      // For exam timer, duration is in minutes
+      this.remainingTime = Math.max(0, (this.duration * 60 * 1000) - elapsed);
+    }
     
     this.updateDisplay();
     this.checkWarnings();

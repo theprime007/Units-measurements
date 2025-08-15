@@ -6,27 +6,32 @@ const OFFLINE_URL = '/index.html';
 
 // Files to cache for offline functionality
 const CACHE_URLS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/css/review-answers.css',
-  '/js/app.js',
-  '/js/app-main.js',
-  '/js/timer.js',
-  '/js/utils.js',
-  '/js/question-manager.js',
-  '/js/state-manager.js',
-  '/js/view-manager.js',
-  '/js/test-manager.js',
-  '/js/questions-data.js',
-  '/components/landing-view.html',
-  '/components/test-view.html',
-  '/components/result-view.html',
-  '/components/review-panel.html',
-  '/components/review-answers-view.html',
-  '/components/solution-analysis-view.html',
-  '/data/sample-questions.json',
-  'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600&display=swap'
+  './',
+  './index.html',
+  './css/style.css',
+  './css/review-answers.css',
+  './js/app.js',
+  './js/app-main.js',
+  './js/timer.js',
+  './js/ui.js',
+  './js/utils.js',
+  './js/storage.js',
+  './js/charts.js',
+  './js/question-manager.js',
+  './js/state-manager.js',
+  './js/view-manager.js',
+  './js/test-manager.js',
+  './js/questions-data.js',
+  './js/adaptive-system.js',
+  './js/performance-analytics.js',
+  './components/landing-view.html',
+  './components/test-view.html',
+  './components/result-view.html',
+  './components/review-panel.html',
+  './components/review-answers-view.html',
+  './components/solution-analysis-view.html',
+  './data/sample-questions.json',
+  './manifest.json'
 ];
 
 // Install event - cache essential files
@@ -37,13 +42,14 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Caching app shell and content');
-        return cache.addAll(CACHE_URLS.map(url => {
-          // Handle external URLs
-          if (url.startsWith('http')) {
-            return new Request(url, { mode: 'no-cors' });
-          }
-          return url;
-        }));
+        // Cache files individually to handle failures gracefully
+        const cachePromises = CACHE_URLS.map(url => {
+          return cache.add(url).catch(error => {
+            console.warn(`Failed to cache ${url}:`, error);
+            // Continue with other files even if one fails
+          });
+        });
+        return Promise.all(cachePromises);
       })
       .catch((error) => {
         console.error('Cache installation failed:', error);
