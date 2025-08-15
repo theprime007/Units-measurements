@@ -1823,7 +1823,7 @@ class MockTestApp {
     if (!this.adaptiveSystem || !this.adaptiveSystem.adaptiveSettings.enabled) return;
     
     const state = this.stateManager.getState();
-    const currentQ = // eslint-disable-line no-unused-vars state.currentQ;
+    const currentQ = state.currentQ; // eslint-disable-line no-unused-vars
     const answeredCount = Object.keys(state.answers).length;
     
     // Provide insights every 10 questions
@@ -1909,7 +1909,7 @@ class MockTestApp {
       this.testManager.navigateQuestion = function(direction) {
         const result = originalNavigateQuestion.call(this, direction);
         
-        const currentQ = // eslint-disable-line no-unused-vars window.app.stateManager.getCurrentQuestion();
+        const currentQ = window.app.stateManager.getCurrentQuestion(); // eslint-disable-line no-unused-vars
         const milestones = [10, 25, 40];
         
         if (milestones.includes(currentQ)) {

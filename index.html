@@ -88,8 +88,17 @@
         <span>You're offline. App will sync when connection is restored.</span>
     </div>
 
-    <!-- External Libraries - Load synchronously to ensure availability -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- External Libraries - Load with error handling -->
+    <!-- <script>
+      // Load Chart.js with error handling
+      const chartScript = document.createElement('script');
+      chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+      chartScript.onerror = function() {
+        console.warn('Chart.js failed to load from CDN, charts will be disabled');
+        window.Chart = null;
+      };
+      document.head.appendChild(chartScript);
+    </script> -->
     
     <!-- JavaScript modules - Load in dependency order -->
     <script src="js/questions-data.js"></script>
