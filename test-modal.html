@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exit Modal Test</title>
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal.hidden {
+            display: none;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .modal-header h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .warning-text {
+            color: #e67e22;
+            font-size: 0.9em;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn--outline {
+            background: transparent;
+            border: 1px solid #ccc;
+            color: #333;
+        }
+        
+        .btn--danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn--primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .console-output {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Exit Confirmation Modal Test</h1>
+        <p>This test demonstrates the exit confirmation modal functionality for GitHub Pages compatibility.</p>
+        
+        <button id="exit-exam-btn" class="btn btn--danger">Exit Exam</button>
+        <button id="submit-test-btn" class="btn btn--primary">Submit Test</button>
+        
+        <div class="console-output" id="console-output">
+            <div>Console output will appear here...</div>
+        </div>
+    </div>
+
+    <!-- Exit Confirmation Modal -->
+    <div id="exit-confirmation-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Exit Exam Confirmation</h3>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to exit the exam?</p>
+                <p class="warning-text">⚠️ Your progress will be saved, but the timer will stop.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-exit-btn" class="btn btn--outline">Cancel</button>
+                <button id="confirm-exit-btn" class="btn btn--danger">Exit Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mock app container -->
+    <div id="app-container" style="display: none;"></div>
+
+    <script>
+        // Mock utility functions
+        window.Utils = {
+            showToast: function(message, type) {
+                logToConsole(`Toast (${type}): ${message}`);
+            }
+        };
+
+        // Mock testManager
+        window.testManager = {
+            submitTest: function() {
+                logToConsole('📤 testManager.submitTest() called');
+            },
+            exitExam: function() {
+                logToConsole('🚪 testManager.exitExam() called');
+            }
+        };
+
+        function logToConsole(message) {
+            const output = document.getElementById('console-output');
+            const div = document.createElement('div');
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Simplified MockTestApp class for testing
+        class MockTestApp {
+            constructor() {
+                this.viewManager = {
+                    showView: (view) => logToConsole(`ViewManager: showing ${view} view`)
+                };
+            }
+
+            showExitConfirmationModal() {
+                const modal = document.getElementById('exit-confirmation-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    logToConsole('👁️ Exit confirmation modal shown');
+                } else {
+                    logToConsole('⚠️ Exit confirmation modal not found, falling back to confirm()');
+                    if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
+                        if (window.testManager && typeof window.testManager.exitExam === 'function') {
+                            window.testManager.exitExam();
+                        } else if (window.testManager && typeof window.testManager.submitTest === 'function') {
+                            window.testManager.submitTest();
+                        } else {
+                            this.backToHome();
+                        }
+                    }
+                }
+            }
+
+            hideExitConfirmationModal() {
+                const modal = document.getElementById('exit-confirmation-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    logToConsole('👁️ Exit confirmation modal hidden');
+                }
+            }
+
+            backToHome() {
+                logToConsole('🏠 Navigating back to home');
+                this.viewManager.showView('landing');
+            }
+
+            showError(message) {
+                logToConsole(`Error: ${message}`);
+                if (window.Utils && window.Utils.showToast) {
+                    window.Utils.showToast(message, 'error');
+                } else {
+                    alert(message);
+                }
+            }
+
+            setupGlobalEventDelegation() {
+                const appContainer = document.getElementById('app-container');
+                if (!appContainer) {
+                    logToConsole('❌ App container not found! Using body instead.');
+                    // For this test, we'll use document.body
+                }
+
+                const buttonStates = new Map();
+
+                document.addEventListener('click', (e) => {
+                    const target = e.target;
+                    const button = target.closest('button');
+                    const buttonId = button ? button.id : target.id;
+                    const actualTarget = target.tagName === 'BUTTON' ? target : button;
+
+                    if (!actualTarget || !buttonId) {
+                        return;
+                    }
+
+                    logToConsole(`🔘 Button clicked: ${buttonId}`);
+
+                    if (buttonStates.get(buttonId)) {
+                        logToConsole(`⏳ Button ${buttonId} is already being processed, ignoring click`);
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+
+                    const setProcessing = (processing) => {
+                        buttonStates.set(buttonId, processing);
+                        if (actualTarget) {
+                            actualTarget.disabled = processing;
+                            actualTarget.dataset.processing = processing.toString();
+                        }
+                    };
+
+                    switch (buttonId) {
+                        case 'submit-test-btn':
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logToConsole('📤 Submit test button clicked');
+                            
+                            setProcessing(true);
+                            if (window.testManager && typeof window.testManager.submitTest === 'function') {
+                                window.testManager.submitTest();
+                            } else {
+                                logToConsole('⚠️ testManager or submitTest method not available');
+                                this.showError('Cannot submit test - test manager not ready');
+                            }
+                            setTimeout(() => setProcessing(false), 1000);
+                            break;
+
+                        case 'exit-exam-btn':
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logToConsole('🚪 Exit exam button clicked');
+                            
+                            setProcessing(true);
+                            this.showExitConfirmationModal();
+                            setTimeout(() => setProcessing(false), 500);
+                            break;
+
+                        case 'confirm-exit-btn':
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logToConsole('✅ Confirm exit button clicked');
+                            
+                            setProcessing(true);
+                            this.hideExitConfirmationModal();
+                            
+                            if (window.testManager && typeof window.testManager.exitExam === 'function') {
+                                logToConsole('🎯 Calling exitExam method');
+                                window.testManager.exitExam();
+                            } else if (window.testManager && typeof window.testManager.submitTest === 'function') {
+                                logToConsole('🎯 exitExam not available, calling submitTest as fallback');
+                                window.testManager.submitTest();
+                            } else {
+                                logToConsole('⚠️ Neither exitExam nor submitTest methods are available');
+                                this.backToHome();
+                            }
+                            setTimeout(() => setProcessing(false), 500);
+                            break;
+
+                        case 'cancel-exit-btn':
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logToConsole('❌ Cancel exit button clicked');
+                            
+                            this.hideExitConfirmationModal();
+                            break;
+                    }
+                });
+
+                logToConsole('✅ Global event delegation setup complete');
+            }
+        }
+
+        // Initialize the test
+        document.addEventListener('DOMContentLoaded', () => {
+            logToConsole('🚀 DOM loaded, initializing test...');
+            
+            window.app = new MockTestApp();
+            window.app.setupGlobalEventDelegation();
+            
+            logToConsole('✅ Test initialized successfully');
+            logToConsole('📝 Click the "Exit Exam" button to test the modal functionality');
+        });
+    </script>
+</body>
+</html>

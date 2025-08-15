@@ -1,5 +1,8 @@
-// Main Application Module
-// Handles application initialization, event binding, and core functionality
+/**
+ * Main Application Module - GitHub Pages Compatible
+ * Handles application initialization, event binding, and core functionality
+ * Fixed for GitHub Pages deployment with proper path handling and error management
+ */
 
 /* global UI, Charts, AdaptiveSystem, PerformanceAnalytics, StateManager, ViewManager, QuestionManager, TestManager, Utils, AppStorage */
 
@@ -47,6 +50,7 @@ class MockTestApp {
       window.appAdaptive = this.adaptiveSystem; // Phase 5
       window.appAnalytics = this.performanceAnalytics; // Phase 5
       window.app = this; // Phase 4: Make app instance available globally
+      window.testManager = this.testManager; // Ensure testManager is globally available
 
       // Initialize managers
       await this.viewManager.init();
@@ -213,12 +217,40 @@ class MockTestApp {
             console.log('Exit exam button clicked');
             
             setProcessing(true);
+            // Show confirmation modal instead of using confirm()
+            this.showExitConfirmationModal();
+            setTimeout(() => setProcessing(false), 500);
+            break;
+
+          case 'confirm-exit-btn':
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('✅ Confirm exit button clicked');
             
-            if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
+            setProcessing(true);
+            this.hideExitConfirmationModal();
+            
+            // Try exitExam first, then fallback to submitTest
+            if (window.testManager && typeof window.testManager.exitExam === 'function') {
+              console.log('🎯 Calling exitExam method');
+              window.testManager.exitExam();
+            } else if (window.testManager && typeof window.testManager.submitTest === 'function') {
+              console.log('🎯 exitExam not available, calling submitTest as fallback');
+              window.testManager.submitTest();
+            } else {
+              console.warn('⚠️ Neither exitExam nor submitTest methods are available');
+              // Fallback to manual navigation
               this.backToHome();
             }
-            
             setTimeout(() => setProcessing(false), 500);
+            break;
+
+          case 'cancel-exit-btn':
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('❌ Cancel exit button clicked');
+            
+            this.hideExitConfirmationModal();
             break;
           case 'review-answers-btn':
             e.preventDefault();
@@ -289,13 +321,21 @@ class MockTestApp {
             e.preventDefault();
             e.stopPropagation();
             console.log('Previous question button clicked');
-            if (this.testManager) this.testManager.previousQuestion();
+            if (window.testManager && typeof window.testManager.previousQuestion === 'function') {
+              window.testManager.previousQuestion();
+            } else {
+              console.warn('⚠️ testManager.previousQuestion not available');
+            }
             break;
           case 'next-btn':
             e.preventDefault();
             e.stopPropagation();
             console.log('Next question button clicked');
-            if (this.testManager) this.testManager.nextQuestion();
+            if (window.testManager && typeof window.testManager.nextQuestion === 'function') {
+              window.testManager.nextQuestion();
+            } else {
+              console.warn('⚠️ testManager.nextQuestion not available');
+            }
             break;
           case 'submit-test-btn':
             e.preventDefault();
@@ -303,7 +343,13 @@ class MockTestApp {
             console.log('Submit test button clicked');
             
             setProcessing(true);
-            if (this.testManager) this.testManager.submitTest();
+            // Check if testManager exists before calling
+            if (window.testManager && typeof window.testManager.submitTest === 'function') {
+              window.testManager.submitTest();
+            } else {
+              console.warn('⚠️ testManager or submitTest method not available');
+              this.showError('Cannot submit test - test manager not ready');
+            }
             setTimeout(() => setProcessing(false), 1000);
             break;
           case 'bookmark-btn':
@@ -368,6 +414,41 @@ class MockTestApp {
             break;
         }
       });
+    }
+  }
+
+  /**
+   * Show exit confirmation modal
+   * Replaces the native confirm() dialog for better UX
+   */
+  showExitConfirmationModal() {
+    const modal = document.getElementById('exit-confirmation-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      console.log('👁️ Exit confirmation modal shown');
+    } else {
+      console.warn('⚠️ Exit confirmation modal not found, falling back to confirm()');
+      if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
+        // Trigger confirm exit logic
+        if (window.testManager && typeof window.testManager.exitExam === 'function') {
+          window.testManager.exitExam();
+        } else if (window.testManager && typeof window.testManager.submitTest === 'function') {
+          window.testManager.submitTest();
+        } else {
+          this.backToHome();
+        }
+      }
+    }
+  }
+
+  /**
+   * Hide exit confirmation modal
+   */
+  hideExitConfirmationModal() {
+    const modal = document.getElementById('exit-confirmation-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      console.log('👁️ Exit confirmation modal hidden');
     }
   }
 
@@ -475,17 +556,23 @@ class MockTestApp {
       switch (event.key) {
         case 'ArrowLeft':
           event.preventDefault();
-          this.testManager.previousQuestion();
+          if (window.testManager && typeof window.testManager.previousQuestion === 'function') {
+            window.testManager.previousQuestion();
+          }
           break;
         case 'ArrowRight':
           event.preventDefault();
-          this.testManager.nextQuestion();
+          if (window.testManager && typeof window.testManager.nextQuestion === 'function') {
+            window.testManager.nextQuestion();
+          }
           break;
         case 'b':
         case 'B':
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
-            this.testManager.toggleBookmark();
+            if (window.testManager && typeof window.testManager.toggleBookmark === 'function') {
+              window.testManager.toggleBookmark();
+            }
           }
           break;
         case '1':
@@ -495,7 +582,9 @@ class MockTestApp {
           if (!event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault();
             const optionIndex = parseInt(event.key) - 1;
-            this.testManager.selectOption(optionIndex);
+            if (window.testManager && typeof window.testManager.selectOption === 'function') {
+              window.testManager.selectOption(optionIndex);
+            }
           }
           break;
       }
@@ -517,13 +606,32 @@ class MockTestApp {
       // Initialize test state
       this.stateManager.startTest();
       
-      // Start timers and auto-save
-      this.testManager.startMainTimer();
-      this.testManager.startAutoSave();
-      
-      // Show test view and display first question
-      this.viewManager.showView('test');
-      this.testManager.displayQuestion();
+      // Start timers and auto-save - check if testManager is available
+      if (window.testManager) {
+        if (typeof window.testManager.startMainTimer === 'function') {
+          window.testManager.startMainTimer();
+        } else {
+          console.warn('⚠️ testManager.startMainTimer not available');
+        }
+        
+        if (typeof window.testManager.startAutoSave === 'function') {
+          window.testManager.startAutoSave();
+        } else {
+          console.warn('⚠️ testManager.startAutoSave not available');
+        }
+        
+        // Show test view and display first question
+        this.viewManager.showView('test');
+        
+        if (typeof window.testManager.displayQuestion === 'function') {
+          window.testManager.displayQuestion();
+        } else {
+          console.warn('⚠️ testManager.displayQuestion not available');
+        }
+      } else {
+        console.warn('⚠️ testManager not available');
+        this.showError('Test manager not ready. Please refresh the page.');
+      }
       
     } catch (error) {
       console.error('Start test error:', error);
@@ -534,13 +642,25 @@ class MockTestApp {
   // Resume existing test
   resumeTest() {
     try {
-      // Resume timers
-      this.testManager.startMainTimer();
-      this.testManager.startAutoSave();
-      
-      // Show test view and current question
-      this.viewManager.showView('test');
-      this.testManager.displayQuestion();
+      // Resume timers - check if testManager is available
+      if (window.testManager) {
+        if (typeof window.testManager.startMainTimer === 'function') {
+          window.testManager.startMainTimer();
+        }
+        if (typeof window.testManager.startAutoSave === 'function') {
+          window.testManager.startAutoSave();
+        }
+        
+        // Show test view and current question
+        this.viewManager.showView('test');
+        
+        if (typeof window.testManager.displayQuestion === 'function') {
+          window.testManager.displayQuestion();
+        }
+      } else {
+        console.warn('⚠️ testManager not available for resume');
+        this.showError('Test manager not ready. Please refresh the page.');
+      }
       
     } catch (error) {
       console.error('Resume test error:', error);
@@ -599,7 +719,9 @@ class MockTestApp {
   // Start review mode (from results page)
   startReviewMode() {
     try {
-      this.testManager.initializeReview();
+      if (window.testManager && typeof window.testManager.initializeReview === 'function') {
+        window.testManager.initializeReview();
+      }
       this.viewManager.showView('review-answers');
       
       // Ensure the review navigation grid is properly initialized
@@ -615,7 +737,9 @@ class MockTestApp {
   // Show solutions view
   showSolutionsView() {
     try {
-      this.testManager.initializeReview();
+      if (window.testManager && typeof window.testManager.initializeReview === 'function') {
+        window.testManager.initializeReview();
+      }
       this.viewManager.showView('review-answers');
       
       // Ensure the review navigation grid is properly initialized
@@ -735,8 +859,8 @@ class MockTestApp {
       
       // Update time spent
       const questionTimeSpent = document.getElementById('question-time-spent');
-      if (questionTimeSpent) {
-        questionTimeSpent.textContent = this.testManager.formatTime(timeSpent * 1000);
+      if (questionTimeSpent && window.testManager && typeof window.testManager.formatTime === 'function') {
+        questionTimeSpent.textContent = window.testManager.formatTime(timeSpent * 1000);
       }
       
       // Update status
@@ -1035,9 +1159,13 @@ class MockTestApp {
 
   // Show error message
   showError(message) {
-    // Simple error display - you can enhance this
-    alert(message);
-    console.error(message);
+    console.error('Error:', message);
+    if (window.Utils && window.Utils.showToast) {
+      window.Utils.showToast(message, 'error');
+    } else {
+      // Fallback to alert if toast is not available
+      alert(message);
+    }
   }
 
   // Get current questions
