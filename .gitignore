@@ -36,3 +36,6 @@ tmp/
 # Logs
 logs/
 *.log
+
+# CSS backup files
+*.backup
