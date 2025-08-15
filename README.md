@@ -1,6 +1,6 @@
 # Units & Measurements Mock Test
 
-A comprehensive, feature-rich Progressive Web Application (PWA) for RRB (Railway Recruitment Board) Units & Measurements mock tests. This application provides an advanced testing environment with adaptive learning, detailed analytics, and offline capabilities.
+A comprehensive, feature-rich web application for RRB (Railway Recruitment Board) Units & Measurements mock tests. This application provides an advanced testing environment with adaptive learning, detailed analytics, and responsive design.
 
 ## 🚀 Live Demo
 
@@ -11,7 +11,7 @@ Experience the full-featured mock test platform with:
 - Real-time timer and progress tracking
 - Comprehensive result analysis
 - Adaptive learning recommendations
-- Offline-capable PWA functionality
+- Cross-browser compatibility
 
 ## 🛠️ Tech Stack
 
@@ -29,10 +29,10 @@ Experience the full-featured mock test platform with:
 - **ESLint** - Code linting and style enforcement
 - **npm** - Package management and build scripts
 
-### Progressive Web App Features
-- **Service Workers** - Offline functionality and caching
-- **Web App Manifest** - Native app-like experience
+### Progressive Enhancement Features
 - **Responsive Design** - Mobile-first approach
+- **Modern JavaScript** - ES6+ features with fallbacks
+- **Accessibility** - WCAG 2.1 compliant interface
 
 ### Browser APIs
 - **LocalStorage/SessionStorage** - Data persistence
@@ -83,10 +83,8 @@ Experience the full-featured mock test platform with:
 │   ├── performance.test.js            # Performance benchmark tests
 │   └── setup.js                       # Jest configuration and mocks
 ├── index.html                         # Main HTML entry point
-├── manifest.json                      # PWA manifest configuration
 ├── package.json                       # npm dependencies and scripts
-├── package-lock.json                  # Dependency lock file
-└── sw.js                             # Service worker for offline support
+└── package-lock.json                  # Dependency lock file
 ```
 
 ## 🔧 Installation Guide
@@ -146,6 +144,7 @@ Experience the full-featured mock test platform with:
 - Canvas API support
 - Fetch API support
 - CSS Grid and Flexbox support
+- Modern browser (Chrome 80+, Firefox 75+, Safari 13+, Edge 80+)
 
 ## 📖 Usage Instructions
 
@@ -209,10 +208,11 @@ Experience the full-featured mock test platform with:
    - **New Test**: Generate fresh question set
    - **Export Results**: Download performance data as JSON
 
-### Offline Usage
-- The app works offline after the first visit
+### Local Storage Usage
+- The app uses browser local storage for data persistence
 - Questions and progress are saved locally
 - Results are stored until manually cleared
+- All data remains in your browser
 
 ## 💻 Development Guide
 
@@ -337,8 +337,8 @@ class PerformanceAnalytics {
 5. **Manual Testing**
    - Test in multiple browsers
    - Verify responsive design
-   - Check PWA functionality
-   - Test offline capabilities
+   - Check cross-platform compatibility
+   - Test local storage functionality
 
 ## 🧪 Testing Guide
 
@@ -529,7 +529,7 @@ The test suite is designed to run in CI/CD environments with:
 - **Question Navigation**: < 100ms response time
 - **Result Calculation**: < 500ms for 100 questions
 - **Chart Rendering**: < 300ms for complex datasets
-- **Offline Sync**: < 200ms for data retrieval
+- **Local Data Access**: < 200ms for data retrieval
 
 ### Future Optimization Opportunities
 
@@ -542,10 +542,10 @@ const loadAdvancedFeatures = async () => {
 };
 ```
 
-#### Service Worker Enhancements
-- **Intelligent Caching**: Implement cache versioning and selective updates
-- **Background Sync**: Queue operations when offline
-- **Push Notifications**: Remind users of incomplete tests
+#### Browser Storage Enhancements
+- **Intelligent Caching**: Implement storage optimization and cleanup
+- **Data Compression**: Compress stored data for better performance
+- **User Preferences**: Enhanced settings persistence
 
 #### Data Optimization
 - **Question Preloading**: Predictive loading of likely next questions
