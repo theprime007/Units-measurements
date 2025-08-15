@@ -128,295 +128,232 @@ class MockTestApp {
     console.log('🎯 Event handling system: Single delegation pattern active');
   }
 
-  // Setup global event delegation for dynamic content
-  setupGlobalEventDelegation() {
-    // Delegate events on the main app container
-    const appContainer = document.getElementById('app-container');
-    if (appContainer) {
-      // Add a global click counter for debugging
-      let clickCounter = 0;
-      
-      // Track button processing states to prevent duplicate actions
-      const buttonStates = new Map();
-      
-      appContainer.addEventListener('click', (e) => {
-        clickCounter++;
-        const target = e.target;
-        
-        // Find the actual button element if clicked element is inside a button
-        const button = target.closest('button');
-        const buttonId = button ? button.id : target.id;
-        
-        // Also check if target itself is a button
-        const actualTarget = target.tagName === 'BUTTON' ? target : button;
-        
-        // Skip if no button found
-        if (!actualTarget || !buttonId) {
-          return;
-        }
-        
-        console.log(`Global click handler #${clickCounter} - Target: ${target.id || 'no-id'}, Tag: ${target.tagName}, Button: ${buttonId || 'none'}`);
-        
-        // Check if button is already being processed
-        if (buttonStates.get(buttonId)) {
-          console.log(`Button ${buttonId} is already being processed, ignoring click`);
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        
-        // Mark button as processing
-        const setProcessing = (processing) => {
-          buttonStates.set(buttonId, processing);
-          if (actualTarget) {
-            actualTarget.disabled = processing;
-            actualTarget.dataset.processing = processing.toString();
-            if (processing) {
-              actualTarget.classList.add('btn--processing');
-            } else {
-              actualTarget.classList.remove('btn--processing');
-            }
-          }
-        };
-        
-        // Handle button clicks by ID
-        switch (buttonId) {
-          case 'start-test-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Start test button clicked');
-            
-            setProcessing(true);
-            this.startTest();
-            
-            setTimeout(() => setProcessing(false), 1000);
-            break;
-          case 'resume-test-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Resume test button clicked');
-            
-            setProcessing(true);
-            this.resumeTest();
-            setTimeout(() => setProcessing(false), 500);
-            break;
-            
-          case 'reset-test-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Reset test button clicked');
-            
-            setProcessing(true);
-            this.resetTest();
-            setTimeout(() => setProcessing(false), 500);
-            break;
-            
-          case 'exit-exam-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Exit exam button clicked');
-            
-            setProcessing(true);
-            // Show confirmation modal instead of using confirm()
-            this.showExitConfirmationModal();
-            setTimeout(() => setProcessing(false), 500);
-            break;
+  // REPLACE ONLY this method in your file
+setupGlobalEventDelegation() {
+  const appContainer = document.getElementById('app-container');
+  if (!appContainer) return;
 
-          case 'confirm-exit-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('✅ Confirm exit button clicked');
-            
-            setProcessing(true);
-            this.hideExitConfirmationModal();
-            
-            // Try exitExam first, then fallback to submitTest
-            if (window.testManager && typeof window.testManager.exitExam === 'function') {
-              console.log('🎯 Calling exitExam method');
-              window.testManager.exitExam();
-            } else if (window.testManager && typeof window.testManager.submitTest === 'function') {
-              console.log('🎯 exitExam not available, calling submitTest as fallback');
-              window.testManager.submitTest();
-            } else {
-              console.warn('⚠️ Neither exitExam nor submitTest methods are available');
-              // Fallback to manual navigation
-              this.backToHome();
-            }
-            setTimeout(() => setProcessing(false), 500);
-            break;
+  // Debounce states per button id
+  const buttonStates = new Map();
+  const BUTTON_SELECTOR = 'button, [role="button"], .btn';
 
-          case 'cancel-exit-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('❌ Cancel exit button clicked');
-            
-            this.hideExitConfirmationModal();
-            break;
-          case 'review-answers-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Review answers button clicked');
-            
-            setProcessing(true);
-            this.startReviewMode();
-            setTimeout(() => setProcessing(false), 500);
-            break;
-            
-          case 'view-solutions-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('View solutions button clicked');
-            
-            setProcessing(true);
-            this.showSolutionsView();
-            setTimeout(() => setProcessing(false), 500);
-            break;
-            
-          case 'new-test-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Start new test button clicked');
-            
-            setProcessing(true);
-            this.startNewTest();
-            setTimeout(() => setProcessing(false), 1000);
-            break;
-          case 'restart-test-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Restart test button clicked');
-            this.restartTest();
-            break;
-          case 'export-results-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Export results button clicked');
-            this.exportResults();
-            break;
-          case 'back-home-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Back to home button clicked');
-            this.backToHome();
-            break;
-          case 'back-to-results-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Back to results button clicked');
-            this.viewManager.showView('result');
-            break;
-          case 'review-prev-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Review previous button clicked');
-            this.navigateReview(-1);
-            break;
-          case 'review-next-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Review next button clicked');
-            this.navigateReview(1);
-            break;
-          case 'prev-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Previous question button clicked');
-            if (window.testManager && typeof window.testManager.previousQuestion === 'function') {
-              window.testManager.previousQuestion();
-            } else {
-              console.warn('⚠️ testManager.previousQuestion not available');
-            }
-            break;
-          case 'next-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Next question button clicked');
-            if (window.testManager && typeof window.testManager.nextQuestion === 'function') {
-              window.testManager.nextQuestion();
-            } else {
-              console.warn('⚠️ testManager.nextQuestion not available');
-            }
-            break;
-          case 'submit-test-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Submit test button clicked');
-            
-            setProcessing(true);
-            // Check if testManager exists before calling
-            if (window.testManager && typeof window.testManager.submitTest === 'function') {
-              window.testManager.submitTest();
-            } else {
-              console.warn('⚠️ testManager or submitTest method not available');
-              this.showError('Cannot submit test - test manager not ready');
-            }
-            setTimeout(() => setProcessing(false), 1000);
-            break;
-          case 'bookmark-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Bookmark button clicked');
-            if (this.testManager) {
-              this.testManager.toggleBookmark();
-              const isBookmarked = this.stateManager.getBookmarked()[this.stateManager.getCurrentQuestion()];
-              target.classList.toggle('bookmarked', isBookmarked);
-            }
-            break;
-          case 'clear-answer-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Clear answer button clicked');
-            if (this.testManager) this.testManager.clearAnswer();
-            break;
-          case 'review-panel-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Review panel button clicked');
-            if (this.testManager) {
-              this.testManager.updateReviewGrid();
-              this.viewManager.showModal('review-panel');
-            }
-            break;
-          case 'close-review-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Close review panel button clicked');
-            this.viewManager.hideModal('review-panel');
-            break;
-          case 'submit-from-review-btn':
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Submit from review button clicked');
-            this.viewManager.hideModal('review-panel');
-            if (this.testManager) this.testManager.submitTest();
-            break;
-          default:
-            // Handle question navigation buttons
-            if (target.classList.contains('question-nav-btn')) {
-              e.preventDefault();
-              e.stopPropagation();
-              const questionIndex = parseInt(target.dataset.questionIndex);
-              console.log('Question nav button clicked:', questionIndex);
-              if (!isNaN(questionIndex)) {
-                this.goToReviewQuestion(questionIndex);
-              }
-            }
-            // Handle review question navigation
-            else if (target.matches('.question-nav-item, .question-number')) {
-              e.preventDefault();
-              e.stopPropagation();
-              const questionIndex = parseInt(target.dataset.questionIndex) || parseInt(target.textContent);
-              console.log('Review question nav clicked:', questionIndex);
-              if (questionIndex && questionIndex > 0) {
-                this.goToReviewQuestion(questionIndex - 1); // Convert to 0-based index
-              }
-            }
-            break;
-        }
-      });
+  // Utility to mark/unmark processing with a slight cooldown
+  const setProcessing = (btn, id, processing) => {
+    buttonStates.set(id, processing);
+    if (btn) {
+      btn.disabled = !!processing;
+      btn.dataset.processing = processing ? 'true' : 'false';
+      if (processing) btn.classList.add('btn--processing');
+      else btn.classList.remove('btn--processing');
     }
-  }
+  };
 
+  appContainer.addEventListener('click', (e) => {
+    // Resolve the actual button element even if inner SVG/span is tapped
+    const target = e.target;
+    const button = target && target.closest ? target.closest(BUTTON_SELECTOR) : null;
+    if (!button || !button.id) return;
+
+    const buttonId = button.id;
+
+    // Prevent double actions while processing
+    if (buttonStates.get(buttonId)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+
+    // Helper: safe call with debounce and cooldown
+    const act = (fn, cooldownMs = 600) => {
+      setProcessing(button, buttonId, true);
+      try { fn && fn(); }
+      finally {
+        // Small cooldown before re-enabling to avoid rapid duplicate taps
+        setTimeout(() => setProcessing(button, buttonId, false), cooldownMs);
+      }
+    };
+
+    // From here on, we fully own this click
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    switch (buttonId) {
+      case 'start-test-btn': {
+        // If custom duration is visible, make sure it’s valid before starting
+        try {
+          const durationSelect = document.getElementById('test-duration');
+          const isCustom = durationSelect && durationSelect.value === 'custom';
+          if (isCustom && typeof this.validateCustomDuration === 'function') {
+            const ok = this.validateCustomDuration();
+            if (!ok) return;
+          }
+        } catch (_) {}
+        act(() => {
+          console.log('Start test');
+          this.startTest();
+        }, 1000);
+        break;
+      }
+
+      case 'resume-test-btn':
+        act(() => {
+          console.log('Resume test');
+          this.resumeTest();
+        }, 500);
+        break;
+
+      case 'reset-test-btn':
+        act(() => {
+          console.log('Reset test');
+          this.resetTest();
+        }, 500);
+        break;
+
+      case 'submit-test-btn':
+        act(() => {
+          console.log('Submit test');
+          if (window.testManager && typeof window.testManager.submitTest === 'function') {
+            window.testManager.submitTest();
+          } else {
+            console.warn('submitTest not available');
+            this.showError('Cannot submit test - test manager not ready');
+          }
+        }, 800);
+        break;
+
+      case 'exit-exam-btn':
+        act(() => {
+          console.log('Exit exam');
+          this.showExitConfirmationModal();
+        }, 500);
+        break;
+
+      case 'confirm-exit-btn':
+        act(() => {
+          console.log('Confirm exit');
+          this.hideExitConfirmationModal();
+          if (window.testManager && typeof window.testManager.exitExam === 'function') {
+            window.testManager.exitExam();
+          } else if (window.testManager && typeof window.testManager.submitTest === 'function') {
+            window.testManager.submitTest();
+          } else {
+            this.backToHome();
+          }
+        }, 500);
+        break;
+
+      case 'cancel-exit-btn':
+        this.hideExitConfirmationModal();
+        break;
+
+      case 'review-answers-btn':
+        act(() => {
+          console.log('Review answers');
+          this.startReviewMode();
+        }, 400);
+        break;
+
+      case 'view-solutions-btn':
+        act(() => {
+          console.log('View solutions');
+          this.showSolutionsView();
+        }, 400);
+        break;
+
+      case 'new-test-btn':
+        act(() => {
+          console.log('Start new test');
+          this.startNewTest();
+        }, 500);
+        break;
+
+      case 'restart-test-btn':
+        this.restartTest();
+        break;
+
+      case 'export-results-btn':
+        this.exportResults();
+        break;
+
+      case 'back-home-btn':
+        this.backToHome();
+        break;
+
+      case 'back-to-results-btn':
+        this.viewManager.showView('result');
+        break;
+
+      case 'review-prev-btn':
+        this.navigateReview(-1);
+        break;
+
+      case 'review-next-btn':
+        this.navigateReview(1);
+        break;
+
+      case 'prev-btn':
+        if (window.testManager && typeof window.testManager.previousQuestion === 'function') {
+          window.testManager.previousQuestion();
+        } else {
+          console.warn('testManager.previousQuestion not available');
+        }
+        break;
+
+      case 'next-btn':
+        if (window.testManager && typeof window.testManager.nextQuestion === 'function') {
+          window.testManager.nextQuestion();
+        } else {
+          console.warn('testManager.nextQuestion not available');
+        }
+        break;
+
+      case 'bookmark-btn':
+        if (this.testManager) {
+          this.testManager.toggleBookmark();
+          const isBookmarked = this.stateManager.getBookmarked()[this.stateManager.getCurrentQuestion()];
+          target.classList.toggle('bookmarked', isBookmarked);
+        }
+        break;
+
+      case 'clear-answer-btn':
+        if (this.testManager) this.testManager.clearAnswer();
+        break;
+
+      case 'review-panel-btn':
+        if (this.testManager) {
+          this.testManager.updateReviewGrid();
+          this.viewManager.showModal('review-panel');
+        }
+        break;
+
+      case 'close-review-btn':
+        this.viewManager.hideModal('review-panel');
+        break;
+
+      case 'submit-from-review-btn':
+        this.viewManager.hideModal('review-panel');
+        if (this.testManager) this.testManager.submitTest();
+        break;
+
+      default: {
+        // Handle question navigation buttons (review grid, etc.)
+        if (target.classList && target.classList.contains('question-nav-btn')) {
+          const questionIndex = parseInt(target.dataset.questionIndex);
+          if (!isNaN(questionIndex)) {
+            this.goToReviewQuestion(questionIndex);
+          }
+        } else if (target.matches && target.matches('.question-nav-item, .question-number')) {
+          const questionIndex = parseInt(target.dataset.questionIndex) || parseInt(target.textContent);
+          if (questionIndex && questionIndex > 0) {
+            this.goToReviewQuestion(questionIndex - 1); // Convert to 0-based index
+          }
+        }
+        break;
+      }
+    }
+  }, { passive: false });
+}
   /**
    * Show exit confirmation modal
    * Replaces the native confirm() dialog for better UX
