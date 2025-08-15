@@ -75,11 +75,11 @@ class MockTestApp {
       // Use event delegation for better reliability with dynamic content
       this.setupGlobalEventDelegation();
       
-      // Traditional direct event listeners for static elements
-      this.setupDirectEventListeners();
-      
-      // Global event listeners
+      // Global event listeners only (avoid duplicate button listeners)
       this.setupGlobalEventListeners();
+      
+      // Setup non-button specific listeners (like form inputs, custom controls)
+      this.setupNonButtonEventListeners();
     } catch (error) {
       console.error('Setup event listeners error:', error);
     }
@@ -133,10 +133,20 @@ class MockTestApp {
             console.log('Start new test button clicked');
             this.startNewTest();
             break;
+          case 'restart-test-btn':
+            e.preventDefault();
+            console.log('Restart test button clicked');
+            this.restartTest();
+            break;
           case 'export-results-btn':
             e.preventDefault();
             console.log('Export results button clicked');
             this.exportResults();
+            break;
+          case 'back-home-btn':
+            e.preventDefault();
+            console.log('Back to home button clicked');
+            this.backToHome();
             break;
           case 'back-to-results-btn':
             e.preventDefault();
@@ -153,6 +163,54 @@ class MockTestApp {
             console.log('Review next button clicked');
             this.navigateReview(1);
             break;
+          case 'prev-btn':
+            e.preventDefault();
+            console.log('Previous question button clicked');
+            if (this.testManager) this.testManager.previousQuestion();
+            break;
+          case 'next-btn':
+            e.preventDefault();
+            console.log('Next question button clicked');
+            if (this.testManager) this.testManager.nextQuestion();
+            break;
+          case 'submit-test-btn':
+            e.preventDefault();
+            console.log('Submit test button clicked');
+            if (this.testManager) this.testManager.submitTest();
+            break;
+          case 'bookmark-btn':
+            e.preventDefault();
+            console.log('Bookmark button clicked');
+            if (this.testManager) {
+              this.testManager.toggleBookmark();
+              const isBookmarked = this.stateManager.getBookmarked()[this.stateManager.getCurrentQuestion()];
+              target.classList.toggle('bookmarked', isBookmarked);
+            }
+            break;
+          case 'clear-answer-btn':
+            e.preventDefault();
+            console.log('Clear answer button clicked');
+            if (this.testManager) this.testManager.clearAnswer();
+            break;
+          case 'review-panel-btn':
+            e.preventDefault();
+            console.log('Review panel button clicked');
+            if (this.testManager) {
+              this.testManager.updateReviewGrid();
+              this.viewManager.showModal('review-panel');
+            }
+            break;
+          case 'close-review-btn':
+            e.preventDefault();
+            console.log('Close review panel button clicked');
+            this.viewManager.hideModal('review-panel');
+            break;
+          case 'submit-from-review-btn':
+            e.preventDefault();
+            console.log('Submit from review button clicked');
+            this.viewManager.hideModal('review-panel');
+            if (this.testManager) this.testManager.submitTest();
+            break;
           default:
             // Handle question navigation buttons
             if (target.classList.contains('question-nav-btn')) {
@@ -163,47 +221,23 @@ class MockTestApp {
                 this.goToReviewQuestion(questionIndex);
               }
             }
+            // Handle review question navigation
+            else if (target.matches('.question-nav-item, .question-number')) {
+              e.preventDefault();
+              const questionIndex = parseInt(target.dataset.questionIndex) || parseInt(target.textContent);
+              console.log('Review question nav clicked:', questionIndex);
+              if (questionIndex && questionIndex > 0) {
+                this.goToReviewQuestion(questionIndex - 1); // Convert to 0-based index
+              }
+            }
             break;
         }
       });
     }
   }
 
-  // Setup traditional direct event listeners
-  setupDirectEventListeners() {
-    // Landing view event listeners
-    this.setupLandingEventListeners();
-    
-    // Test view event listeners  
-    this.setupTestEventListeners();
-    
-    // Result view event listeners
-    this.setupResultEventListeners();
-    
-    // Review answers view event listeners
-    this.setupReviewAnswersEventListeners();
-  }
-
-  // Setup landing view event listeners
-  setupLandingEventListeners() {
-    // Start test button
-    const startBtn = document.getElementById('start-test-btn');
-    if (startBtn) {
-      startBtn.addEventListener('click', () => this.startTest());
-    }
-
-    // Resume test button
-    const resumeBtn = document.getElementById('resume-test-btn');
-    if (resumeBtn) {
-      resumeBtn.addEventListener('click', () => this.resumeTest());
-    }
-
-    // Reset test button
-    const resetBtn = document.getElementById('reset-test-btn');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', () => this.resetTest());
-    }
-
+  // Setup non-button event listeners (inputs, forms, etc.)
+  setupNonButtonEventListeners() {
     // Test duration change
     const durationSelect = document.getElementById('test-duration');
     if (durationSelect) {
@@ -242,20 +276,20 @@ class MockTestApp {
       questionSource.addEventListener('change', (e) => this.toggleQuestionSource(e));
     }
 
-    // JSON file upload - THIS WAS MISSING!
+    // JSON file upload
     const jsonFileInput = document.getElementById('json-file');
     if (jsonFileInput) {
       jsonFileInput.addEventListener('change', (e) => this.handleJSONUpload(e));
-    } else {
-      console.warn('JSON file input element not found');
     }
 
-    // Download example JSON button
+    // Download example JSON button - this is a specific non-core button
     const downloadExampleBtn = document.getElementById('download-example-btn');
     if (downloadExampleBtn) {
       downloadExampleBtn.addEventListener('click', () => this.downloadExampleJSON());
     }
   }
+
+
 
   // Handles initial dark mode state (from localStorage or system preference)
   applyInitialDarkMode() {
@@ -274,158 +308,13 @@ class MockTestApp {
     document.body.setAttribute('data-theme', isDark ? "dark" : "light");
   }
 
-  // Setup test view event listeners
-  setupTestEventListeners() {
-    // Exit exam button
-    const exitBtn = document.getElementById('exit-exam-btn');
-    if (exitBtn) {
-      exitBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
-          this.backToHome();
-        }
-      });
-    }
 
-    // Navigation buttons
-    const prevBtn = document.getElementById('prev-btn');
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => this.testManager.previousQuestion());
-    }
 
-    const nextBtn = document.getElementById('next-btn');
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => this.testManager.nextQuestion());
-    }
 
-    // Bookmark button
-    const bookmarkBtn = document.getElementById('bookmark-btn');
-    if (bookmarkBtn) {
-      bookmarkBtn.addEventListener('click', () => {
-        this.testManager.toggleBookmark();
-        // Add visual feedback
-        const isBookmarked = this.stateManager.getBookmarked()[this.stateManager.getCurrentQuestion()];
-        bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
-      });
-    }
 
-    // Clear answer button
-    const clearBtn = document.getElementById('clear-answer-btn');
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => this.testManager.clearAnswer());
-    }
 
-    // Review panel buttons
-    const reviewBtn = document.getElementById('review-panel-btn');
-    if (reviewBtn) {
-      reviewBtn.addEventListener('click', () => {
-        this.testManager.updateReviewGrid();
-        this.viewManager.showModal('review-panel');
-      });
-    }
 
-    // Submit test button
-    const submitBtn = document.getElementById('submit-test-btn');
-    if (submitBtn) {
-      submitBtn.addEventListener('click', () => this.testManager.submitTest());
-    }
 
-    // Review panel specific event listeners
-    this.setupReviewPanelEventListeners();
-  }
-
-  // Setup review panel event listeners
-  setupReviewPanelEventListeners() {
-    const closeReviewBtn = document.getElementById('close-review-btn');
-    if (closeReviewBtn) {
-      closeReviewBtn.addEventListener('click', () => this.viewManager.hideModal('review-panel'));
-    }
-
-    const submitFromReviewBtn = document.getElementById('submit-from-review-btn');
-    if (submitFromReviewBtn) {
-      submitFromReviewBtn.addEventListener('click', () => {
-        this.viewManager.hideModal('review-panel');
-        this.testManager.submitTest();
-      });
-    }
-  }
-
-  // Setup result view event listeners
-  setupResultEventListeners() {
-    // Review answers button
-    const reviewAnswersBtn = document.getElementById('review-answers-btn');
-    if (reviewAnswersBtn) {
-      reviewAnswersBtn.addEventListener('click', () => {
-        this.testManager.initializeReview();
-        this.viewManager.showView('review-answers');
-      });
-    }
-
-    // View Solutions button - NEW
-    const viewSolutionsBtn = document.getElementById('view-solutions-btn');
-    if (viewSolutionsBtn) {
-      viewSolutionsBtn.addEventListener('click', () => {
-        this.showSolutionsView();
-      });
-    }
-
-    // Start New Test button - NEW  
-    const newTestBtn = document.getElementById('new-test-btn');
-    if (newTestBtn) {
-      newTestBtn.addEventListener('click', () => this.startNewTest());
-    }
-
-    // Restart test button
-    const restartBtn = document.getElementById('restart-test-btn');
-    if (restartBtn) {
-      restartBtn.addEventListener('click', () => this.restartTest());
-    }
-
-    // Export results button
-    const exportBtn = document.getElementById('export-results-btn');
-    if (exportBtn) {
-      exportBtn.addEventListener('click', () => this.exportResults());
-    }
-
-    // Back to home button
-    const backHomeBtn = document.getElementById('back-home-btn');
-    if (backHomeBtn) {
-      backHomeBtn.addEventListener('click', () => this.backToHome());
-    }
-  }
-
-  // Setup review answers view event listeners
-  setupReviewAnswersEventListeners() {
-    // Back to results button
-    const backToResultsBtn = document.getElementById('back-to-results-btn');
-    if (backToResultsBtn) {
-      backToResultsBtn.addEventListener('click', () => this.viewManager.showView('result'));
-    }
-
-    // Review navigation buttons
-    const reviewPrevBtn = document.getElementById('review-prev-btn');
-    if (reviewPrevBtn) {
-      reviewPrevBtn.addEventListener('click', () => this.navigateReview(-1));
-    }
-
-    const reviewNextBtn = document.getElementById('review-next-btn');
-    if (reviewNextBtn) {
-      reviewNextBtn.addEventListener('click', () => this.navigateReview(1));
-    }
-
-    // Add event delegation for question navigation in review mode
-    const reviewContainer = document.getElementById('review-answers-view');
-    if (reviewContainer) {
-      reviewContainer.addEventListener('click', (e) => {
-        // Handle question number clicks in review mode
-        if (e.target.matches('.question-nav-item, .question-number')) {
-          const questionIndex = parseInt(e.target.dataset.questionIndex) || parseInt(e.target.textContent);
-          if (questionIndex && questionIndex > 0) {
-            this.goToReviewQuestion(questionIndex - 1); // Convert to 0-based index
-          }
-        }
-      });
-    }
-  }
 
   // Setup global event listeners
   setupGlobalEventListeners() {
@@ -1921,7 +1810,6 @@ class MockTestApp {
       return false;
     }
   }
-}
 }
 
 // Make MockTestApp globally available
