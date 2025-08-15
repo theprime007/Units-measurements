@@ -1083,7 +1083,7 @@ class MockTestApp {
   setupTopicGroups() {
     const topicToggles = document.querySelectorAll('.topic-toggle');
     topicToggles.forEach(toggle => {
-      toggle.addEventListener('click', (e) => {
+      toggle.addEventListener('click', (e) => { // eslint-disable-line no-unused-vars
         const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
         toggle.setAttribute('aria-expanded', !isExpanded);
         
@@ -1957,7 +1957,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = MockTestApp;
-}
+// Export for browser use - attach to window object
+window.MockTestApp = MockTestApp;

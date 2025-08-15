@@ -539,9 +539,5 @@ class Storage {
   }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Storage;
-} else {
-  window.Storage = Storage;
-}
+// Export for browser use - attach to window object
+window.Storage = Storage;

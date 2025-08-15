@@ -527,7 +527,5 @@ class PerformanceAnalytics {
 // Make PerformanceAnalytics globally available
 window.PerformanceAnalytics = PerformanceAnalytics;
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = PerformanceAnalytics;
-}
+// Export for browser use - attach to window object
+window.PerformanceAnalytics = PerformanceAnalytics;

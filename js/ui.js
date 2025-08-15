@@ -457,9 +457,5 @@ class UI {
   }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = UI;
-} else {
-  window.UI = UI;
-}
+// Export for browser use - attach to window object
+window.UI = UI;

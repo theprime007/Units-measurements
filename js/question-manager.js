@@ -367,10 +367,5 @@ class QuestionManager {
   }
 }
 
-// Make QuestionManager globally available
+// Export for browser use - attach to window object
 window.QuestionManager = QuestionManager;
-
-// Export for use in other files
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = QuestionManager;
-}

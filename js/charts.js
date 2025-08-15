@@ -549,9 +549,5 @@ class Charts {
   }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Charts;
-} else {
-  window.Charts = Charts;
-}
+// Export for browser use - attach to window object
+window.Charts = Charts;

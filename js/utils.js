@@ -244,20 +244,6 @@ class Utils {
     }
   }
 
-  // Show error message
-  static showError(message, title = 'Error') {
-    console.error(`${title}: ${message}`);
-    
-    // Use toast if available
-    if (window.appUI && window.appUI.showToast) {
-      window.appUI.showToast(message, 'error', 5000);
-    } else {
-      // Fallback to alert in development
-      if (Utils.isDevelopment()) {
-        alert(`${title}: ${message}`);
-      }
-    }
-  }
 
   // Show success message
   static showSuccess(message, title = 'Success') {
@@ -275,43 +261,50 @@ class Utils {
   }
 
   // DOM Utilities for performance optimization
-  static domCache = new Map();
+  static getDomCache() {
+    if (!Utils._domCache) {
+      Utils._domCache = new Map();
+    }
+    return Utils._domCache;
+  }
 
   // Cached DOM query - improves performance by avoiding repetitive queries
   static getElement(selector, useCache = true) {
-    if (useCache && Utils.domCache.has(selector)) {
-      const element = Utils.domCache.get(selector);
+    const domCache = Utils.getDomCache();
+    if (useCache && domCache.has(selector)) {
+      const element = domCache.get(selector);
       // Verify element is still in DOM
       if (element && document.contains(element)) {
         return element;
       } else {
-        Utils.domCache.delete(selector);
+        domCache.delete(selector);
       }
     }
 
     const element = document.querySelector(selector);
     if (element && useCache) {
-      Utils.domCache.set(selector, element);
+      domCache.set(selector, element);
     }
     return element;
   }
 
   // Cached DOM query for multiple elements
   static getElements(selector, useCache = false) {
-    if (useCache && Utils.domCache.has(selector)) {
-      return Utils.domCache.get(selector);
+    const domCache = Utils.getDomCache();
+    if (useCache && domCache.has(selector)) {
+      return domCache.get(selector);
     }
 
     const elements = document.querySelectorAll(selector);
     if (useCache) {
-      Utils.domCache.set(selector, elements);
+      domCache.set(selector, elements);
     }
     return elements;
   }
 
   // Clear DOM cache (useful when DOM structure changes significantly)
   static clearDOMCache() {
-    Utils.domCache.clear();
+    Utils.getDomCache().clear();
   }
 
   // Batch DOM operations to minimize reflows
@@ -325,62 +318,35 @@ class Utils {
     });
   }
 
-  // Debounce function to prevent excessive calls
-  static debounce(func, wait, immediate = false) {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        timeout = null;
-        if (!immediate) func.apply(this, args);
-      };
-      const callNow = immediate && !timeout;
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-      if (callNow) func.apply(this, args);
-    };
-  }
 
-  // Throttle function to limit execution frequency
-  static throttle(func, limit) {
-    let inThrottle;
-    return function(...args) {
-      if (!inThrottle) {
-        func.apply(this, args);
-        inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
-      }
-    };
-  }
 
   // Performance monitoring utility
-  static performanceMonitor = {
-    timers: new Map(),
-    
-    start(label) {
-      this.timers.set(label, performance.now());
-    },
-    
-    end(label, logResult = true) {
-      const startTime = this.timers.get(label);
-      if (startTime) {
-        const duration = performance.now() - startTime;
-        this.timers.delete(label);
-        if (logResult) {
-          console.log(`Performance: ${label} took ${duration.toFixed(2)}ms`);
+  static getPerformanceMonitor() {
+    if (!Utils._performanceMonitor) {
+      Utils._performanceMonitor = {
+        timers: new Map(),
+        
+        start(label) {
+          this.timers.set(label, performance.now());
+        },
+        
+        end(label, logResult = true) {
+          const startTime = this.timers.get(label);
+          if (startTime) {
+            const duration = performance.now() - startTime;
+            this.timers.delete(label);
+            if (logResult) {
+              console.log(`Performance: ${label} took ${duration.toFixed(2)}ms`);
+            }
+            return duration;
+          }
+          return null;
         }
-        return duration;
-      }
-      return null;
+      };
     }
-  };
+    return Utils._performanceMonitor;
+  }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Utils;
-}
-
-// Also expose as global for backward compatibility
-if (typeof window !== 'undefined') {
-  window.Utils = Utils;
-}
+// Export for browser use - attach to window object
+window.Utils = Utils;

@@ -502,7 +502,5 @@ class AdaptiveSystem {
 // Make AdaptiveSystem globally available
 window.AdaptiveSystem = AdaptiveSystem;
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = AdaptiveSystem;
-}
+// Export for browser use - attach to window object
+window.AdaptiveSystem = AdaptiveSystem;

@@ -80,15 +80,6 @@ class CustomTimer {
     this.updateDisplay();
   }
   
-  reset() {
-    this.stop();
-    this.remainingTime = this.duration * (this.isQuestionTimer ? 1000 : 60 * 1000);
-    this.totalTime = this.remainingTime;
-    this.pausedTime = 0;
-    this.warningsTriggered.clear();
-    this.updateDisplay();
-  }
-  
   stop() {
     this.isRunning = false;
     this.isPaused = false;
@@ -420,10 +411,5 @@ class CustomTimer {
   }
 }
 
-// Make CustomTimer globally available
+// Export for browser use - attach to window object
 window.CustomTimer = CustomTimer;
-
-// Export for use in other files
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = CustomTimer;
-}
