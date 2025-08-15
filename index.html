@@ -38,17 +38,15 @@
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600&display=swap" as="style">
     <link rel="preload" href="css/style.css" as="style">
     
-    <!-- Enhanced CSS Architecture -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Enhanced CSS Architecture - Consolidated for better compatibility -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/style-enhanced.css">
-    <link rel="stylesheet" href="css/test-view.css">
     <link rel="stylesheet" href="css/landing-view.css">
+    <link rel="stylesheet" href="css/test-view.css">
     <link rel="stylesheet" href="css/result-view.css">
     <link rel="stylesheet" href="css/review-components.css">
-    <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/review-answers.css">
-    <link rel="stylesheet" href="css/phase6-styles.css">
     
     <!-- Favicon and Icons -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9IiMxRkI4Q0QiLz48dGV4dCB4PSIxMiIgeT0iMTYiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlU8L3RleHQ+PC9zdmc+">
@@ -102,9 +100,6 @@
     <script src="js/timer.js"></script>
     <script src="js/adaptive-system.js"></script>
     <script src="js/performance-analytics.js"></script>
-    <script src="js/social-features.js"></script>
-    <script src="js/accessibility-enhancer.js"></script>
-    <script src="js/export-integration.js"></script>
     <script src="js/question-manager.js"></script>
     <script src="js/state-manager.js"></script>
     <script src="js/view-manager.js"></script>
@@ -164,10 +159,12 @@
                     loadingIndicator.style.display = 'flex';
                 }
                 
-                // Initialize the application
-                if (window.MockTestApp) {
-                    const app = new window.MockTestApp();
-                    await app.init();
+                // Initialize the application (singleton pattern)
+                if (window.MockTestApp && !window.mockTestAppInstance) {
+                    window.mockTestAppInstance = new window.MockTestApp();
+                    await window.mockTestAppInstance.init();
+                } else if (window.mockTestAppInstance && window.mockTestAppInstance.initialized) {
+                    console.log('MockTestApp already initialized, skipping...');
                 } else {
                     console.error('MockTestApp class not found');
                 }

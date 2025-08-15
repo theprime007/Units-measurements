@@ -12,15 +12,18 @@ class MockTestApp {
     this.storage = null;
     this.adaptiveSystem = null; // Phase 5: Adaptive Learning
     this.performanceAnalytics = null; // Phase 5: Advanced Analytics
-    this.socialFeatures = null; // Phase 6: Social Features
-    this.accessibilityEnhancer = null; // Phase 6: Accessibility
-    this.exportIntegration = null; // Phase 6: Export & Integration
+    this.initialized = false; // Prevent multiple initialization
   }
 
   // Initialize the application
   async init() {
+    if (this.initialized) {
+      console.log('MockTestApp already initialized, skipping...');
+      return;
+    }
+    
     try {
-      // Initialize core modules
+      // Initialize core modules (singletons)
       this.storage = new Storage();
       this.ui = new UI();
       this.charts = new Charts();
@@ -28,11 +31,6 @@ class MockTestApp {
       // Phase 5: Initialize advanced modules
       this.adaptiveSystem = new AdaptiveSystem();
       this.performanceAnalytics = new PerformanceAnalytics();
-      
-      // Phase 6: Initialize social and accessibility features
-      this.socialFeatures = new SocialFeatures();
-      this.accessibilityEnhancer = new AccessibilityEnhancer();
-      this.exportIntegration = new ExportIntegrationSystem();
       
       // Initialize managers
       this.stateManager = new StateManager();
@@ -46,9 +44,6 @@ class MockTestApp {
       window.appCharts = this.charts;
       window.appAdaptive = this.adaptiveSystem; // Phase 5
       window.appAnalytics = this.performanceAnalytics; // Phase 5
-      window.appSocial = this.socialFeatures; // Phase 6
-      window.appAccessibility = this.accessibilityEnhancer; // Phase 6
-      window.appExport = this.exportIntegration; // Phase 6
       window.app = this; // Phase 4: Make app instance available globally
 
       // Initialize managers
@@ -72,11 +67,9 @@ class MockTestApp {
       
       // Phase 5: Initialize advanced features
       this.initializePhase5Features();
-      
-      // Phase 6: Initialize social and accessibility features
-      this.initializePhase6Features();
 
-      console.log('MockTestApp initialized successfully - Phase 6 Complete');
+      this.initialized = true;
+      console.log('MockTestApp initialized successfully - Phase 5 Complete');
     } catch (error) {
       console.error('App initialization error:', error);
       this.showError('Failed to initialize application');
@@ -140,36 +133,46 @@ class MockTestApp {
       appContainer.addEventListener('click', (e) => {
         clickCounter++;
         const target = e.target;
-        const id = target.id;
         
-        console.log(`Global click handler #${clickCounter} - Target: ${id || 'no-id'}, Tag: ${target.tagName}`);
+        // Find the actual button element if clicked element is inside a button
+        const button = target.closest('button');
+        const buttonId = button ? button.id : target.id;
+        
+        // Also check if target itself is a button
+        const actualTarget = target.tagName === 'BUTTON' ? target : button;
+        
+        console.log(`Global click handler #${clickCounter} - Target: ${target.id || 'no-id'}, Tag: ${target.tagName}, Button: ${buttonId || 'none'}, Actual Target: ${actualTarget ? actualTarget.tagName : 'none'}`);
         
         // Handle button clicks by ID
-        switch (id) {
+        switch (buttonId) {
           case 'start-test-btn':
             e.preventDefault();
             e.stopPropagation();
             console.log('Start test button clicked - Event details:', {
-              target: target,
-              id: id,
-              classList: target.classList.toString(),
-              disabled: target.disabled,
+              target: actualTarget,
+              id: buttonId,
+              classList: actualTarget ? actualTarget.classList.toString() : 'none',
+              disabled: actualTarget ? actualTarget.disabled : 'none',
               timeStamp: e.timeStamp
             });
             
             // Add additional safety check
-            if (target.disabled) {
+            if (actualTarget && actualTarget.disabled) {
               console.log('Start test button is disabled, ignoring click');
               return;
             }
             
             // Disable button temporarily to prevent multiple rapid clicks
-            target.disabled = true;
+            if (actualTarget) {
+              actualTarget.disabled = true;
+            }
             this.startTest();
             
             // Re-enable after a short delay
             setTimeout(() => {
-              target.disabled = false;
+              if (actualTarget) {
+                actualTarget.disabled = false;
+              }
             }, 1000);
             break;
           case 'resume-test-btn':
@@ -1618,27 +1621,6 @@ class MockTestApp {
     }
   }
   
-  // Phase 6: Initialize social and accessibility features
-  initializePhase6Features() {
-    try {
-      // Setup social features integration
-      this.setupSocialFeaturesIntegration();
-      
-      // Setup accessibility enhancement integration
-      this.setupAccessibilityIntegration();
-      
-      // Initialize social UI components
-      this.setupSocialUIComponents();
-      
-      // Initialize accessibility controls
-      this.setupAccessibilityControls();
-      
-      console.log('Phase 6 features initialized successfully');
-    } catch (error) {
-      console.error('Phase 6 initialization error:', error);
-    }
-  }
-  
   // Setup adaptive learning integration
   setupAdaptiveLearningIntegration() {
     // Override question selection to use adaptive recommendations
@@ -1959,96 +1941,6 @@ class MockTestApp {
         
         return result;
       };
-    }
-  }
-  
-  // Phase 6: Setup social features integration
-  setupSocialFeaturesIntegration() {
-    // Override test completion to record achievements
-    const originalCompleteTest = this.completeTest ? this.completeTest.bind(this) : null;
-    if (originalCompleteTest) {
-      this.completeTest = function() {
-        const result = originalCompleteTest.apply(this, arguments);
-        
-        // Record test completion for social features
-        if (this.socialFeatures) {
-          const state = this.stateManager.getState();
-          const score = this.calculateFinalScore();
-          const timeSpent = this.calculateTotalTime();
-          const isFirstTest = state.testsCompleted === 0;
-          
-          const pointsEarned = this.socialFeatures.recordTestCompletion(score, timeSpent, isFirstTest);
-          
-          // Show points notification
-          if (window.Utils && window.Utils.showToast) {
-            window.Utils.showToast(`🎉 You earned ${pointsEarned} points!`, 'success', 3000);
-          }
-        }
-        
-        return result;
-      };
-    }
-  }
-  
-  // Setup accessibility integration
-  setupAccessibilityIntegration() {
-    if (this.accessibilityEnhancer) {
-      // Setup event listeners for accessibility controls
-      this.accessibilityEnhancer.setupEventListeners();
-      
-      // Announce important events to screen readers
-      const originalNavigateQuestion = this.navigateQuestion ? this.navigateQuestion.bind(this) : null;
-      if (originalNavigateQuestion) {
-        this.navigateQuestion = function(direction) {
-          const result = originalNavigateQuestion.apply(this, arguments);
-          
-          const currentQ = this.stateManager.getCurrentQuestion();
-          this.accessibilityEnhancer.announceToScreenReader(`Question ${currentQ} of 50`);
-          
-          return result;
-        };
-      }
-    }
-  }
-  
-  // Setup social UI components
-  setupSocialUIComponents() {
-    if (!this.socialFeatures) return;
-    
-    // Add social features to result view
-    const resultView = document.querySelector('.result-view, #result-view');
-    if (resultView && !resultView.querySelector('.social-features-container')) {
-      const socialContainer = document.createElement('div');
-      socialContainer.innerHTML = this.socialFeatures.getSocialFeaturesHTML();
-      
-      // Insert after result summary
-      const resultSummary = resultView.querySelector('.result-summary, .score-summary');
-      if (resultSummary && resultSummary.parentNode) {
-        resultSummary.parentNode.insertBefore(socialContainer, resultSummary.nextSibling);
-      } else {
-        resultView.appendChild(socialContainer);
-      }
-      
-      // Setup social event listeners
-      this.socialFeatures.setupEventListeners();
-      
-      // Add export integration
-      const exportContainer = document.createElement('div');
-      exportContainer.innerHTML = this.exportIntegration.getExportHTML();
-      resultView.appendChild(exportContainer);
-    }
-  }
-  
-  // Setup accessibility controls
-  setupAccessibilityControls() {
-    if (!this.accessibilityEnhancer) return;
-    
-    // Add accessibility panel to page
-    const body = document.body;
-    if (!body.querySelector('#accessibility-panel')) {
-      const accessibilityPanel = document.createElement('div');
-      accessibilityPanel.innerHTML = this.accessibilityEnhancer.getAccessibilityControlsHTML();
-      body.appendChild(accessibilityPanel);
     }
   }
   
