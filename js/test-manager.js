@@ -773,12 +773,8 @@ class TestManager {
     }
   }
 
-  // Submit test
-  submitTest() {
-    if (!confirm('Are you sure you want to submit your test? You cannot change your answers after submission.')) {
-      return;
-    }
-    
+  // Core submission logic extracted for modal-based flow
+  performSubmit() {
     try {
       this.stateManager.setTestEnd();
       this.stopQuestionTimer();
@@ -814,6 +810,23 @@ class TestManager {
       console.error('Submit test error:', error);
       alert('Failed to submit test. Please try again.');
     }
+  }
+
+  // Submit test with modal-first approach, fallback to confirm
+  submitTest() {
+    // Check if submit modal exists in DOM - if so, show it instead of confirm()
+    const submitModal = document.getElementById('submit-confirmation-modal');
+    if (submitModal && window.app && typeof window.app.showSubmitConfirmationModal === 'function') {
+      window.app.showSubmitConfirmationModal();
+      return;
+    }
+    
+    // Fallback to native confirm() for environments without modal (e.g., tests)
+    if (!confirm('Are you sure you want to submit your test? You cannot change your answers after submission.')) {
+      return;
+    }
+    
+    this.performSubmit();
   }
 
   // Calculate test results

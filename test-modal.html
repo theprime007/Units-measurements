@@ -109,19 +109,37 @@
     </div>
 
     <!-- Exit Confirmation Modal -->
-    <div id="exit-confirmation-modal" class="modal hidden">
+    <div id="exit-confirmation-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="exit-modal-title" aria-describedby="exit-modal-desc">
         <div class="modal-backdrop"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Exit Exam Confirmation</h3>
+                <h3 id="exit-modal-title">Exit Exam Confirmation</h3>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to exit the exam?</p>
+                <p id="exit-modal-desc">Are you sure you want to exit the exam?</p>
                 <p class="warning-text">⚠️ Your progress will be saved, but the timer will stop.</p>
             </div>
             <div class="modal-footer">
                 <button id="cancel-exit-btn" class="btn btn--outline">Cancel</button>
                 <button id="confirm-exit-btn" class="btn btn--danger">Exit Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Confirmation Modal -->
+    <div id="submit-confirmation-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title" aria-describedby="submit-modal-desc">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="submit-modal-title">Submit Test Confirmation</h3>
+            </div>
+            <div class="modal-body">
+                <p id="submit-modal-desc">Are you sure you want to submit your test?</p>
+                <p class="warning-text">⚠️ You cannot change your answers after submission.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-submit-btn" class="btn btn--outline">Cancel</button>
+                <button id="confirm-submit-btn" class="btn btn--primary">Submit Test</button>
             </div>
         </div>
     </div>
@@ -161,12 +179,16 @@
                 this.viewManager = {
                     showView: (view) => logToConsole(`ViewManager: showing ${view} view`)
                 };
+                // Android ghost-tap prevention
+                this._gestureLockUntil = 0;
+                this._modalOpen = false;
             }
 
             showExitConfirmationModal() {
                 const modal = document.getElementById('exit-confirmation-modal');
                 if (modal) {
                     modal.classList.remove('hidden');
+                    this._modalOpen = true;
                     logToConsole('👁️ Exit confirmation modal shown');
                 } else {
                     logToConsole('⚠️ Exit confirmation modal not found, falling back to confirm()');
@@ -186,7 +208,33 @@
                 const modal = document.getElementById('exit-confirmation-modal');
                 if (modal) {
                     modal.classList.add('hidden');
+                    this._modalOpen = false;
                     logToConsole('👁️ Exit confirmation modal hidden');
+                }
+            }
+
+            showSubmitConfirmationModal() {
+                const modal = document.getElementById('submit-confirmation-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    this._modalOpen = true;
+                    logToConsole('👁️ Submit confirmation modal shown');
+                } else {
+                    logToConsole('⚠️ Submit confirmation modal not found, falling back to confirm()');
+                    if (confirm('Are you sure you want to submit your test? You cannot change your answers after submission.')) {
+                        if (window.testManager && typeof window.testManager.performSubmit === 'function') {
+                            window.testManager.performSubmit();
+                        }
+                    }
+                }
+            }
+
+            hideSubmitConfirmationModal() {
+                const modal = document.getElementById('submit-confirmation-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    this._modalOpen = false;
+                    logToConsole('👁️ Submit confirmation modal hidden');
                 }
             }
 
@@ -247,13 +295,34 @@
                             logToConsole('📤 Submit test button clicked');
                             
                             setProcessing(true);
-                            if (window.testManager && typeof window.testManager.submitTest === 'function') {
-                                window.testManager.submitTest();
+                            this.showSubmitConfirmationModal();
+                            setTimeout(() => setProcessing(false), 1000);
+                            break;
+
+                        case 'confirm-submit-btn':
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logToConsole('✅ Confirm submit button clicked');
+                            
+                            setProcessing(true);
+                            this.hideSubmitConfirmationModal();
+                            
+                            if (window.testManager && typeof window.testManager.performSubmit === 'function') {
+                                logToConsole('🎯 Calling performSubmit method');
+                                window.testManager.performSubmit();
                             } else {
-                                logToConsole('⚠️ testManager or submitTest method not available');
+                                logToConsole('⚠️ performSubmit method not available');
                                 this.showError('Cannot submit test - test manager not ready');
                             }
-                            setTimeout(() => setProcessing(false), 1000);
+                            setTimeout(() => setProcessing(false), 500);
+                            break;
+
+                        case 'cancel-submit-btn':
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logToConsole('❌ Cancel submit button clicked');
+                            
+                            this.hideSubmitConfirmationModal();
                             break;
 
                         case 'exit-exam-btn':

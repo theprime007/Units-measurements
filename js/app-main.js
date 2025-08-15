@@ -18,6 +18,10 @@ class MockTestApp {
     this.adaptiveSystem = null; // Phase 5: Adaptive Learning
     this.performanceAnalytics = null; // Phase 5: Advanced Analytics
     this.initialized = false; // Prevent multiple initialization
+    
+    // Android ghost-tap prevention
+    this._gestureLockUntil = 0;
+    this._modalOpen = false;
   }
 
   // Initialize the application
@@ -135,7 +139,7 @@ setupGlobalEventDelegation() {
 
   // Debounce states per button id
   const buttonStates = new Map();
-  const BUTTON_SELECTOR = 'button, [role="button"], .btn';
+  const BUTTON_SELECTOR = 'button[id], [role="button"][id]'; // More specific selector
 
   // Utility to mark/unmark processing with a slight cooldown
   const setProcessing = (btn, id, processing) => {
@@ -149,6 +153,29 @@ setupGlobalEventDelegation() {
   };
 
   appContainer.addEventListener('click', (e) => {
+    // Guard: Ignore clicks during gesture lock (Android ghost-tap protection)
+    if (Date.now() < this._gestureLockUntil) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      console.log('🚫 Click ignored due to gesture lock (ghost-tap protection)');
+      return;
+    }
+
+    // Guard: Ignore clicks when any modal is open
+    if (this._modalOpen) {
+      // Safety check: verify modal is actually visible in DOM
+      const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
+      if (visibleModals.length > 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.log('🚫 Click ignored - modal is open');
+        return;
+      } else {
+        // Modal flag is out of sync, reset it
+        this._modalOpen = false;
+      }
+    }
+
     // Resolve the actual button element even if inner SVG/span is tapped
     const target = e.target;
     const button = target && target.closest ? target.closest(BUTTON_SELECTOR) : null;
@@ -192,6 +219,9 @@ setupGlobalEventDelegation() {
         act(() => {
           console.log('Start test');
           this.startTest();
+          
+          // Set gesture lock to prevent Android ghost taps on submit button
+          this._gestureLockUntil = Date.now() + 800;
         }, 1000);
         break;
       }
@@ -219,7 +249,7 @@ setupGlobalEventDelegation() {
             console.warn('submitTest not available');
             this.showError('Cannot submit test - test manager not ready');
           }
-        }, 800);
+        }, 1000); // Longer cooldown for submit to prevent re-open loops
         break;
 
       case 'exit-exam-btn':
@@ -245,6 +275,23 @@ setupGlobalEventDelegation() {
 
       case 'cancel-exit-btn':
         this.hideExitConfirmationModal();
+        break;
+
+      case 'confirm-submit-btn':
+        act(() => {
+          console.log('Confirm submit');
+          this.hideSubmitConfirmationModal();
+          if (window.testManager && typeof window.testManager.performSubmit === 'function') {
+            window.testManager.performSubmit();
+          } else {
+            console.warn('performSubmit not available');
+            this.showError('Cannot submit test - test manager not ready');
+          }
+        }, 500);
+        break;
+
+      case 'cancel-submit-btn':
+        this.hideSubmitConfirmationModal();
         break;
 
       case 'review-answers-btn':
@@ -362,7 +409,14 @@ setupGlobalEventDelegation() {
     const modal = document.getElementById('exit-confirmation-modal');
     if (modal) {
       modal.classList.remove('hidden');
+      this._modalOpen = true;
       console.log('👁️ Exit confirmation modal shown');
+      
+      // Focus management for accessibility
+      const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (firstFocusable) {
+        firstFocusable.focus();
+      }
     } else {
       console.warn('⚠️ Exit confirmation modal not found, falling back to confirm()');
       if (confirm('Are you sure you want to exit the exam? Your progress will be saved.')) {
@@ -385,7 +439,46 @@ setupGlobalEventDelegation() {
     const modal = document.getElementById('exit-confirmation-modal');
     if (modal) {
       modal.classList.add('hidden');
+      this._modalOpen = false;
       console.log('👁️ Exit confirmation modal hidden');
+    }
+  }
+
+  /**
+   * Show submit confirmation modal
+   * Replaces the native confirm() dialog for better UX
+   */
+  showSubmitConfirmationModal() {
+    const modal = document.getElementById('submit-confirmation-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      this._modalOpen = true;
+      console.log('👁️ Submit confirmation modal shown');
+      
+      // Focus management for accessibility
+      const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (firstFocusable) {
+        firstFocusable.focus();
+      }
+    } else {
+      console.warn('⚠️ Submit confirmation modal not found, falling back to confirm()');
+      if (confirm('Are you sure you want to submit your test? You cannot change your answers after submission.')) {
+        if (window.testManager && typeof window.testManager.performSubmit === 'function') {
+          window.testManager.performSubmit();
+        }
+      }
+    }
+  }
+
+  /**
+   * Hide submit confirmation modal
+   */
+  hideSubmitConfirmationModal() {
+    const modal = document.getElementById('submit-confirmation-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      this._modalOpen = false;
+      console.log('👁️ Submit confirmation modal hidden');
     }
   }
 
