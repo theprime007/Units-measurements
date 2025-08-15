@@ -1144,6 +1144,9 @@ class TestManager {
   }
 }
 
+// Make TestManager globally available
+window.TestManager = TestManager;
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = TestManager;

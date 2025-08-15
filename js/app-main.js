@@ -1327,6 +1327,9 @@ class MockTestApp {
   }
 }
 
+// Make MockTestApp globally available
+window.MockTestApp = MockTestApp;
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new MockTestApp();

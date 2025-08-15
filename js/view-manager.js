@@ -466,6 +466,9 @@ class ViewManager {
   }
 }
 
+// Make ViewManager globally available
+window.ViewManager = ViewManager;
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ViewManager;

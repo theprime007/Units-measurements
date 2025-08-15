@@ -260,14 +260,6 @@ class CustomTimer {
       this.circularProgress.style.strokeDashoffset = dashOffset;
     }
   }
-        }
-      }
-    }
-    
-    if (this.progressElement) {
-      this.updateProgress();
-    }
-  }
   
   updateProgress() {
     const totalTime = this.duration * 60 * 1000;
@@ -401,7 +393,9 @@ class CustomTimer {
     });
   }
 }
-}
+
+// Make CustomTimer globally available
+window.CustomTimer = CustomTimer;
 
 // Export for use in other files
 if (typeof module !== 'undefined' && module.exports) {
