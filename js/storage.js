@@ -1,11 +1,11 @@
 // Local Storage Manager
 // Handles data persistence, settings management, and session storage
 
-class Storage {
+class AppStorage {
   constructor() {
     // Prevent duplicate initialization
-    if (Storage.instance) {
-      return Storage.instance;
+    if (AppStorage.instance) {
+      return AppStorage.instance;
     }
     
     this.storageKeys = {
@@ -24,7 +24,7 @@ class Storage {
     this.init();
     
     // Store singleton instance
-    Storage.instance = this;
+    AppStorage.instance = this;
   }
 
   // Initialize storage manager
@@ -539,9 +539,5 @@ class Storage {
   }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Storage;
-} else {
-  window.Storage = Storage;
-}
+// Export for browser use - attach to window object
+window.AppStorage = AppStorage;

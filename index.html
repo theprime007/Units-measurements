@@ -88,23 +88,32 @@
         <span>You're offline. App will sync when connection is restored.</span>
     </div>
 
-    <!-- External Libraries - Load asynchronously -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- External Libraries - Load with error handling -->
+    <!-- <script>
+      // Load Chart.js with error handling
+      const chartScript = document.createElement('script');
+      chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+      chartScript.onerror = function() {
+        console.warn('Chart.js failed to load from CDN, charts will be disabled');
+        window.Chart = null;
+      };
+      document.head.appendChild(chartScript);
+    </script> -->
     
-    <!-- JavaScript modules - Load with defer for better performance -->
-    <script src="js/questions-data.js" defer></script>
-    <script src="js/utils.js" defer></script>
-    <script src="js/storage.js" defer></script>
-    <script src="js/ui.js" defer></script>
-    <script src="js/charts.js" defer></script>
-    <script src="js/timer.js" defer></script>
-    <script src="js/adaptive-system.js" defer></script>
-    <script src="js/performance-analytics.js" defer></script>
-    <script src="js/question-manager.js" defer></script>
-    <script src="js/state-manager.js" defer></script>
-    <script src="js/view-manager.js" defer></script>
-    <script src="js/test-manager.js" defer></script>
-    <script src="js/app-main.js" defer></script>
+    <!-- JavaScript modules - Load in dependency order -->
+    <script src="js/questions-data.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/timer.js"></script>
+    <script src="js/adaptive-system.js"></script>
+    <script src="js/performance-analytics.js"></script>
+    <script src="js/question-manager.js"></script>
+    <script src="js/state-manager.js"></script>
+    <script src="js/view-manager.js"></script>
+    <script src="js/test-manager.js"></script>
+    <script src="js/app-main.js"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>

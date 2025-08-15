@@ -517,7 +517,7 @@ class Charts {
 
   // Destroy all charts
   destroyAll() {
-    this.charts.forEach((chart, id) => {
+    this.charts.forEach((chart, id) => { // eslint-disable-line no-unused-vars
       chart.destroy();
     });
     this.charts.clear();
@@ -549,9 +549,5 @@ class Charts {
   }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Charts;
-} else {
-  window.Charts = Charts;
-}
+// Export for browser use - attach to window object
+window.Charts = Charts;

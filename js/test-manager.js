@@ -1,6 +1,8 @@
 // Test Management Module
 // Handles test execution, question display, navigation, and timing
 
+/* global CustomTimer */
+
 class TestManager {
   constructor(stateManager, viewManager, questionManager) {
     this.stateManager = stateManager;
@@ -1230,7 +1232,5 @@ class TestManager {
 // Make TestManager globally available
 window.TestManager = TestManager;
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = TestManager;
-}
+// Export for browser use - attach to window object
+window.TestManager = TestManager;
