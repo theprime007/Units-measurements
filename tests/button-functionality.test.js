@@ -125,6 +125,7 @@ describe('Button Functionality Tests', () => {
       app.testManager = {
         submitTest: jest.fn()
       };
+      window.testManager = app.testManager;
 
       // Click rapidly multiple times
       button.click();

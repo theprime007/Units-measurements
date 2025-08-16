@@ -259,19 +259,37 @@
 </div>
 
 <!-- Exit Confirmation Modal -->
-<div id="exit-confirmation-modal" class="modal hidden">
+<div id="exit-confirmation-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="exit-modal-title" aria-describedby="exit-modal-desc">
     <div class="modal-backdrop"></div>
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Exit Exam Confirmation</h3>
+            <h3 id="exit-modal-title">Exit Exam Confirmation</h3>
         </div>
         <div class="modal-body">
-            <p>Are you sure you want to exit the exam?</p>
+            <p id="exit-modal-desc">Are you sure you want to exit the exam?</p>
             <p class="warning-text">⚠️ Your progress will be saved, but the timer will stop.</p>
         </div>
         <div class="modal-footer">
             <button id="cancel-exit-btn" class="btn btn--outline">Cancel</button>
             <button id="confirm-exit-btn" class="btn btn--danger">Exit Exam</button>
+        </div>
+    </div>
+</div>
+
+<!-- Submit Confirmation Modal -->
+<div id="submit-confirmation-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title" aria-describedby="submit-modal-desc">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="submit-modal-title">Submit Test Confirmation</h3>
+        </div>
+        <div class="modal-body">
+            <p id="submit-modal-desc">Are you sure you want to submit your test?</p>
+            <p class="warning-text">⚠️ You cannot change your answers after submission.</p>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-submit-btn" class="btn btn--outline">Cancel</button>
+            <button id="confirm-submit-btn" class="btn btn--primary">Submit Test</button>
         </div>
     </div>
 </div>
