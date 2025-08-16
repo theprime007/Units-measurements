@@ -383,18 +383,66 @@ setupGlobalEventDelegation() {
         if (this.testManager) this.testManager.submitTest();
         break;
 
+      // Solution Analysis Navigation Buttons
+      case 'prev-solution-btn':
+        act(() => {
+          console.log('Previous solution');
+          this.navigateSolution(-1);
+        }, 400);
+        break;
+
+      case 'next-solution-btn':
+        act(() => {
+          console.log('Next solution');
+          this.navigateSolution(1);
+        }, 400);
+        break;
+
+      case 'jump-to-question-btn':
+        act(() => {
+          console.log('Jump to question modal');
+          this.showJumpToQuestionModal();
+        }, 300);
+        break;
+
       default: {
-        // Handle question navigation buttons (review grid, etc.)
-        if (target.classList && target.classList.contains('question-nav-btn')) {
+        // Handle modal close buttons
+        if (target.classList && target.classList.contains('modal-close')) {
+          // Find which modal this close button belongs to
+          const modal = target.closest('.modal');
+          if (modal && modal.id === 'jump-to-question-modal') {
+            this.hideJumpToQuestionModal();
+          }
+          // Other modal close handlers can be added here
+        } else if (target.classList && target.classList.contains('modal-backdrop')) {
+          // Handle backdrop clicks to close modals
+          const modal = target.closest('.modal');
+          if (modal && modal.id === 'jump-to-question-modal') {
+            this.hideJumpToQuestionModal();
+          }
+        }
+        // Handle question navigation buttons (review grid, solution navigation, etc.)
+        else if (target.classList && target.classList.contains('question-nav-btn')) {
           const questionIndex = parseInt(target.dataset.questionIndex);
           if (!isNaN(questionIndex)) {
             this.goToReviewQuestion(questionIndex);
           }
         } else if (target.matches && target.matches('.question-nav-item, .question-number')) {
-          const questionIndex = parseInt(target.dataset.questionIndex) || parseInt(target.textContent);
-          if (questionIndex && questionIndex > 0) {
-            this.goToReviewQuestion(questionIndex - 1); // Convert to 0-based index
+          const questionIndex = parseInt(target.dataset.questionIndex);
+          if (!isNaN(questionIndex)) {
+            // Check if we're in solution analysis view
+            const currentView = this.viewManager.currentView;
+            if (currentView === 'solution-analysis') {
+              this.jumpToSolutionQuestion(questionIndex);
+            } else {
+              // Use 1-based index for review mode if dataset not available
+              const index = questionIndex || (parseInt(target.textContent) - 1);
+              this.goToReviewQuestion(index);
+            }
           }
+        } else if (target.classList && target.classList.contains('jump-question-btn')) {
+          // Handle jump modal buttons (they have their own click handlers)
+          // This is handled in populateJumpQuestionGrid
         }
         break;
       }
@@ -770,16 +818,16 @@ setupGlobalEventDelegation() {
       if (window.testManager && typeof window.testManager.initializeReview === 'function') {
         window.testManager.initializeReview();
       }
-      this.viewManager.showView('review-answers');
+      this.viewManager.showView('solution-analysis');
       
-      // Ensure the review navigation grid is properly initialized
+      // Initialize solution analysis view
       setTimeout(() => {
-        this.updateReviewDisplay(0);
+        this.initializeSolutionAnalysis();
       }, 100);
       
       // Show a message that this is solution mode
       if (window.Utils && window.Utils.showToast) {
-        window.Utils.showToast('Viewing solutions for all questions', 'info', 3000);
+        window.Utils.showToast('Viewing detailed solutions for all questions', 'info', 3000);
       }
     } catch (error) {
       console.error('Show solutions error:', error);
@@ -962,6 +1010,334 @@ setupGlobalEventDelegation() {
       });
     } catch (error) {
       console.error('Update review navigation grid error:', error);
+    }
+  }
+
+  // Solution Analysis Navigation Functions
+  
+  // Initialize solution analysis view
+  initializeSolutionAnalysis() {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      
+      if (!currentQuestions || currentQuestions.length === 0) {
+        console.warn('No questions available for solution analysis');
+        return;
+      }
+      
+      // Initialize with first question
+      this.stateManager.updateState({ solutionCurrentQ: 0 });
+      this.updateSolutionDisplay(0);
+      this.updateSolutionFilters();
+      
+    } catch (error) {
+      console.error('Initialize solution analysis error:', error);
+    }
+  }
+  
+  // Navigate solution analysis (previous/next)
+  navigateSolution(direction) {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      const currentSolutionQ = state.solutionCurrentQ || 0;
+      const newSolutionQ = currentSolutionQ + direction;
+      
+      if (newSolutionQ >= 0 && newSolutionQ < currentQuestions.length) {
+        this.stateManager.updateState({ solutionCurrentQ: newSolutionQ });
+        this.updateSolutionDisplay(newSolutionQ);
+        
+        // Show feedback that navigation happened
+        if (window.Utils && window.Utils.showToast) {
+          window.Utils.showToast(`Question ${newSolutionQ + 1} of ${currentQuestions.length}`, 'info', 1500);
+        }
+      }
+    } catch (error) {
+      console.error('Navigate solution error:', error);
+    }
+  }
+  
+  // Update solution display for current question
+  updateSolutionDisplay(questionIndex) {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      const results = this.stateManager.getResults();
+      
+      if (!results || !currentQuestions[questionIndex]) return;
+      
+      const question = currentQuestions[questionIndex];
+      const userAnswer = state.answers[questionIndex];
+      const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+      const timeSpent = state.timeSpent[questionIndex] || 0;
+      
+      // Update question counter
+      const solutionQNum = document.getElementById('solution-q-num');
+      if (solutionQNum) {
+        solutionQNum.textContent = questionIndex + 1;
+      }
+      
+      // Update question text
+      const currentQuestionText = document.getElementById('current-question-text');
+      if (currentQuestionText) {
+        currentQuestionText.textContent = question.question;
+      }
+      
+      // Update question meta data
+      const currentDifficulty = document.getElementById('current-difficulty');
+      if (currentDifficulty) {
+        currentDifficulty.textContent = question.difficulty;
+        currentDifficulty.className = `status status--${question.difficulty.toLowerCase()}`;
+      }
+      
+      const currentTopic = document.getElementById('current-topic');
+      if (currentTopic) {
+        currentTopic.textContent = question.topic;
+      }
+      
+      const currentStatus = document.getElementById('current-status');
+      if (currentStatus) {
+        const status = userAnswer === null ? 'Unanswered' : (isCorrect ? 'Correct' : 'Incorrect');
+        currentStatus.textContent = status;
+        currentStatus.className = `status status--${status.toLowerCase()}`;
+      }
+      
+      const currentTime = document.getElementById('current-time');
+      if (currentTime && window.testManager && typeof window.testManager.formatTime === 'function') {
+        currentTime.textContent = window.testManager.formatTime(timeSpent * 1000);
+      }
+      
+      // Update answer options with highlighting
+      const answerOptions = document.getElementById('current-answer-options');
+      if (answerOptions) {
+        answerOptions.innerHTML = '';
+        question.options.forEach((option, index) => {
+          const optionDiv = document.createElement('div');
+          optionDiv.className = 'answer-option';
+          
+          // Add status classes
+          if (index === question.correctIndex) {
+            optionDiv.classList.add('correct-answer');
+          }
+          if (userAnswer === index && index !== question.correctIndex) {
+            optionDiv.classList.add('user-incorrect');
+          }
+          if (userAnswer === index) {
+            optionDiv.classList.add('user-selected');
+          }
+          
+          optionDiv.innerHTML = `
+            <span class="option-letter">${String.fromCharCode(65 + index)}</span>
+            <span class="option-text">${option}</span>
+            ${index === question.correctIndex ? '<span class="correct-indicator">✓</span>' : ''}
+            ${userAnswer === index && index !== question.correctIndex ? '<span class="incorrect-indicator">✗</span>' : ''}
+          `;
+          
+          answerOptions.appendChild(optionDiv);
+        });
+      }
+      
+      // Update solution explanation
+      const currentSolution = document.getElementById('current-solution');
+      if (currentSolution) {
+        currentSolution.innerHTML = `<p>${question.solution || 'Solution not available for this question.'}</p>`;
+      }
+      
+      // Update navigation buttons
+      const prevSolutionBtn = document.getElementById('prev-solution-btn');
+      const nextSolutionBtn = document.getElementById('next-solution-btn');
+      
+      if (prevSolutionBtn) {
+        prevSolutionBtn.disabled = questionIndex === 0;
+      }
+      
+      if (nextSolutionBtn) {
+        nextSolutionBtn.disabled = questionIndex === currentQuestions.length - 1;
+      }
+      
+      // Update filtered question list (left sidebar)
+      this.updateFilteredQuestionList(questionIndex);
+      
+    } catch (error) {
+      console.error('Update solution display error:', error);
+    }
+  }
+  
+  // Update filtered question list in sidebar
+  updateFilteredQuestionList(currentQuestionIndex) {
+    try {
+      const filteredList = document.getElementById('filtered-question-list');
+      if (!filteredList) return;
+      
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      
+      // Clear existing list
+      filteredList.innerHTML = '';
+      
+      // Create navigation items for each question
+      currentQuestions.forEach((question, index) => {
+        const item = document.createElement('button');
+        item.className = 'question-nav-item';
+        item.textContent = index + 1;
+        item.dataset.questionIndex = index;
+        
+        // Determine status and apply appropriate class
+        const userAnswer = state.answers[index];
+        const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+        
+        if (index === currentQuestionIndex) {
+          item.classList.add('current');
+        } else if (userAnswer === null) {
+          item.classList.add('unanswered');
+        } else if (isCorrect) {
+          item.classList.add('correct');
+        } else {
+          item.classList.add('incorrect');
+        }
+        
+        // Click handler will be handled by global event delegation
+        filteredList.appendChild(item);
+      });
+    } catch (error) {
+      console.error('Update filtered question list error:', error);
+    }
+  }
+  
+  // Show jump to question modal
+  showJumpToQuestionModal() {
+    try {
+      const modal = document.getElementById('jump-to-question-modal');
+      if (!modal) {
+        console.warn('Jump to question modal not found');
+        return;
+      }
+      
+      // Populate question grid
+      this.populateJumpQuestionGrid();
+      
+      // Show modal
+      modal.classList.remove('hidden');
+      this._modalOpen = true;
+      
+      // Focus management for accessibility
+      const firstButton = modal.querySelector('.jump-question-btn');
+      if (firstButton) {
+        firstButton.focus();
+      }
+      
+    } catch (error) {
+      console.error('Show jump to question modal error:', error);
+    }
+  }
+  
+  // Populate jump question grid
+  populateJumpQuestionGrid() {
+    try {
+      const grid = document.getElementById('jump-question-grid');
+      if (!grid) return;
+      
+      const currentQuestions = this.getCurrentQuestions();
+      const state = this.stateManager.getState();
+      const currentSolutionQ = state.solutionCurrentQ || 0;
+      
+      // Clear existing grid
+      grid.innerHTML = '';
+      
+      // Create buttons for each question
+      currentQuestions.forEach((question, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'jump-question-btn';
+        btn.textContent = index + 1;
+        btn.dataset.questionIndex = index;
+        
+        // Determine status and apply appropriate class
+        const userAnswer = state.answers[index];
+        const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+        
+        if (index === currentSolutionQ) {
+          btn.classList.add('current');
+        } else if (userAnswer === null) {
+          btn.classList.add('unanswered');
+        } else if (isCorrect) {
+          btn.classList.add('correct');
+        } else {
+          btn.classList.add('incorrect');
+        }
+        
+        // Add click handler to jump to question and close modal
+        btn.addEventListener('click', () => {
+          this.jumpToSolutionQuestion(index);
+          this.hideJumpToQuestionModal();
+        });
+        
+        grid.appendChild(btn);
+      });
+    } catch (error) {
+      console.error('Populate jump question grid error:', error);
+    }
+  }
+  
+  // Jump to specific question in solution view
+  jumpToSolutionQuestion(questionIndex) {
+    try {
+      const currentQuestions = this.getCurrentQuestions();
+      
+      if (questionIndex >= 0 && questionIndex < currentQuestions.length) {
+        this.stateManager.updateState({ solutionCurrentQ: questionIndex });
+        this.updateSolutionDisplay(questionIndex);
+        
+        // Show feedback that navigation happened
+        if (window.Utils && window.Utils.showToast) {
+          window.Utils.showToast(`Jumped to Question ${questionIndex + 1}`, 'success', 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Jump to solution question error:', error);
+    }
+  }
+  
+  // Hide jump to question modal
+  hideJumpToQuestionModal() {
+    try {
+      const modal = document.getElementById('jump-to-question-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        this._modalOpen = false;
+      }
+    } catch (error) {
+      console.error('Hide jump to question modal error:', error);
+    }
+  }
+  
+  // Update solution filters (for filtering questions by type)
+  updateSolutionFilters() {
+    try {
+      // This function can be enhanced later to populate topic and difficulty filters
+      // For now, just ensure the filter controls are properly initialized
+      
+      const topicSelect = document.getElementById('topic-filter-select');
+      if (topicSelect) {
+        // Populate topics from questions
+        const currentQuestions = this.getCurrentQuestions();
+        const topics = [...new Set(currentQuestions.map(q => q.topic))];
+        
+        // Clear existing options except "All Topics"
+        while (topicSelect.children.length > 1) {
+          topicSelect.removeChild(topicSelect.lastChild);
+        }
+        
+        // Add topic options
+        topics.forEach(topic => {
+          const option = document.createElement('option');
+          option.value = topic;
+          option.textContent = topic;
+          topicSelect.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('Update solution filters error:', error);
     }
   }
 

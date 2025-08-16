@@ -4,7 +4,7 @@
 class ViewManager {
   constructor() {
     this.currentView = 'landing';
-    this.views = ['landing', 'test', 'result', 'review-answers'];
+    this.views = ['landing', 'test', 'result', 'review-answers', 'solution-analysis'];
     this.componentCache = {};
   }
 
@@ -26,6 +26,7 @@ class ViewManager {
       this.loadComponent('test-view'),
       this.loadComponent('result-view'),
       this.loadComponent('review-answers-view'),
+      this.loadComponent('solution-analysis-view'),
       this.loadComponent('review-panel')
     ];
 

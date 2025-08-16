@@ -31,6 +31,7 @@ class StateManager {
       isDarkMode: false,
       enhancedTimer: false,
       reviewCurrentQ: 0,
+      solutionCurrentQ: 0, // For solution analysis view
       results: null,
       questionSource: 'default',
       customQuestions: null
