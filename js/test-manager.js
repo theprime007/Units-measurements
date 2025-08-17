@@ -1,5 +1,6 @@
-// Test Management Module
+// Test Management Module - FIXED VERSION
 // Handles test execution, question display, navigation, and timing
+// Key fixes: 40-second question timer, proper progress bars, memory leak prevention
 
 class TestManager {
   constructor(stateManager, viewManager, questionManager) {
@@ -19,6 +20,10 @@ class TestManager {
     this.autoSaveInterval = null;
     this.customMainTimer = null;
     this.customQuestionTimer = null;
+    
+    // FIXED: Add question timer configuration
+    this.QUESTION_TIME_LIMIT = 40; // 40 seconds per question
+    this.questionRemainingTime = this.QUESTION_TIME_LIMIT * 1000; // milliseconds
     
     // Timer DOM elements cache
     this.timerElements = {};
@@ -179,7 +184,7 @@ class TestManager {
       questionTimerDiv.innerHTML = `
         <div class="timer-display">
           <span class="timer-label">Question Time:</span>
-          <span id="question-timer" class="timer-value">00:00</span>
+          <span id="question-timer" class="timer-value">00:40</span>
         </div>
         <div id="question-timer-progress" class="timer-progress hidden">
           <div class="progress-bar"></div>
@@ -191,7 +196,7 @@ class TestManager {
     }
   }
 
-  // Start test timer
+  // Start test timer (unchanged main timer logic)
   startMainTimer() {
     if (!this.isValid()) return;
     
@@ -387,12 +392,12 @@ class TestManager {
     }, 1000);
   }
 
-  // Start question timer
+  // FIXED: Start question timer with 40-second countdown
   startQuestionTimer() {
     if (!this.isValid()) return;
     
     try {
-      // Stop any existing question timer first
+      // CRITICAL: Stop any existing question timer first
       this.stopQuestionTimer();
       
       this.initializeTimerElements();
@@ -408,8 +413,9 @@ class TestManager {
     }
   }
 
-  // Start enhanced question timer
+  // FIXED: Enhanced question timer with proper 40-second countdown
   startEnhancedQuestionTimer() {
+    // Ensure complete cleanup
     this.stopQuestionTimer();
     
     const timerElement = this.timerElements.questionTimer;
@@ -425,117 +431,79 @@ class TestManager {
       progressElement.classList.remove('hidden');
     }
     
-    const currentQuestions = this.getCurrentQuestions();
-    if (!currentQuestions || currentQuestions.length === 0) {
-      console.error('No questions available for timer');
-      return;
-    }
-    
-    const currentQuestionIndex = this.stateManager.getCurrentQuestion();
-    const currentQuestion = currentQuestions[currentQuestionIndex];
-    const timeLimit = (currentQuestion && currentQuestion.timeLimit) ? 
-      currentQuestion.timeLimit / 60 : 5; // Default 5 minutes per question
-    
+    // FIXED: Use consistent 40-second limit
     this.questionStartTime = Date.now();
+    this.questionRemainingTime = this.QUESTION_TIME_LIMIT * 1000;
+    const currentQuestionIndex = this.stateManager.getCurrentQuestion();
     
     // Use CustomTimer if available, otherwise fallback
     if (typeof CustomTimer !== 'undefined') {
       try {
+        // FIXED: Convert 40 seconds to minutes correctly for CustomTimer
         this.customQuestionTimer = new CustomTimer({
-          duration: timeLimit,
+          duration: this.QUESTION_TIME_LIMIT / 60, // Convert to minutes: 40/60 = 0.667 minutes
           element: timerElement,
           progressElement: progressElement,
-          audioAlert: false,
+          audioAlert: false, // No audio for question timer
           visualAlert: true,
-          warningThresholds: [2, 1],
+          warningThresholds: [0.33, 0.17], // 20 seconds (0.33 min) and 10 seconds (0.17 min)
           onTick: (remaining) => {
             if (this.isValid() && this.questionStartTime) {
+              // Update remaining time for other methods
+              this.questionRemainingTime = remaining;
+              
+              // Update time spent tracking
               const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
               this.stateManager.updateTimeSpent(currentQuestionIndex, elapsed);
             }
+          },
+          onComplete: () => {
+            // FIXED: Show "Time Up!" instead of auto-advancing
+            if (timerElement && !this.isDestroyed) {
+              timerElement.textContent = 'Time Up!';
+              timerElement.classList.add('danger');
+            }
+            this.questionRemainingTime = 0;
+            console.log('Question timer expired - Time Up!');
           }
         });
         
         this.customQuestionTimer.start();
       } catch (error) {
         console.error('Error creating custom question timer:', error);
-        this.startEnhancedBasicQuestionTimer(timeLimit);
+        this.startBasicQuestionTimer();
       }
     } else {
-      this.startEnhancedBasicQuestionTimer(timeLimit);
+      // Use basic fallback implementation
+      this.startBasicQuestionTimer();
     }
   }
 
-  // Enhanced basic question timer (fallback)
-  startEnhancedBasicQuestionTimer(timeLimit) {
+  // FIXED: Basic question timer with proper 40-second countdown
+  startBasicQuestionTimer() {
+    // Ensure complete cleanup first
     this.stopQuestionTimer();
     
     const timerElement = this.timerElements.questionTimer;
     const progressElement = this.timerElements.questionTimerProgress;
-    const totalDuration = timeLimit * 60 * 1000;
-    
-    this.questionStartTime = Date.now();
-    const currentQuestionIndex = this.stateManager.getCurrentQuestion();
-    
-    this.questionTimer = setInterval(() => {
-      if (!this.isValid() || !this.questionStartTime) {
-        this.stopQuestionTimer();
-        return;
-      }
-      
-      const elapsed = Date.now() - this.questionStartTime;
-      const remaining = totalDuration - elapsed;
-      
-      if (timerElement) {
-        if (remaining > 0) {
-          const timeString = this.formatTime(remaining);
-          timerElement.textContent = timeString;
-          
-          // Update warning classes
-          timerElement.classList.remove('warning', 'danger');
-          if (remaining < 1 * 60 * 1000) {
-            timerElement.classList.add('danger');
-          } else if (remaining < 2 * 60 * 1000) {
-            timerElement.classList.add('warning');
-          }
-        } else {
-          timerElement.textContent = 'Time Up!';
-          timerElement.classList.add('danger');
-        }
-      }
-      
-      // Update progress bar
-      if (progressElement && remaining > 0) {
-        const progressBar = progressElement.querySelector('.progress-bar');
-        if (progressBar) {
-          const percentage = Math.max(0, Math.min(100, ((totalDuration - elapsed) / totalDuration) * 100));
-          progressBar.style.width = `${percentage}%`;
-        }
-      }
-      
-      // Update time spent
-      const elapsedSeconds = Math.floor(elapsed / 1000);
-      this.stateManager.updateTimeSpent(currentQuestionIndex, elapsedSeconds);
-    }, 1000);
-  }
-
-  // Start basic question timer
-  startBasicQuestionTimer() {
-    this.questionStartTime = Date.now();
-    
-    if (this.questionTimer) {
-      clearInterval(this.questionTimer);
-    }
-    
-    const timerElement = this.timerElements.questionTimer;
     
     if (!timerElement) {
       console.warn('Question timer element not found');
       return;
     }
     
+    // FIXED: Initialize timer state correctly
+    this.questionStartTime = Date.now();
+    this.questionRemainingTime = this.QUESTION_TIME_LIMIT * 1000; // 40 seconds in ms
+    const totalDuration = this.QUESTION_TIME_LIMIT * 1000;
     const currentQuestionIndex = this.stateManager.getCurrentQuestion();
     
+    // Show progress bar
+    if (progressElement) {
+      progressElement.classList.remove('hidden');
+    }
+    
+    // Start countdown timer with higher frequency for smooth updates
     this.questionTimer = setInterval(() => {
       if (!this.isValid() || !this.questionStartTime) {
         this.stopQuestionTimer();
@@ -543,52 +511,112 @@ class TestManager {
       }
       
       const elapsed = Date.now() - this.questionStartTime;
-      const timeString = this.formatTime(elapsed);
-      timerElement.textContent = timeString;
+      const remaining = Math.max(0, totalDuration - elapsed);
       
-      // Update time spent
+      // Update internal state
+      this.questionRemainingTime = remaining;
+      
+      // Update timer display
+      if (timerElement) {
+        if (remaining > 0) {
+          // FIXED: Show proper countdown format
+          const timeString = this.formatQuestionCountdown(remaining);
+          timerElement.textContent = timeString;
+          
+          // FIXED: Add warning classes at correct intervals
+          timerElement.classList.remove('warning', 'danger');
+          if (remaining <= 10000) { // Last 10 seconds
+            timerElement.classList.add('danger');
+          } else if (remaining <= 20000) { // Last 20 seconds
+            timerElement.classList.add('warning');
+          }
+        } else {
+          // FIXED: Show "Time Up!" when expired
+          timerElement.textContent = 'Time Up!';
+          timerElement.classList.add('danger');
+          console.log('Question timer expired - Time Up!');
+        }
+      }
+      
+      // FIXED: Update progress bar to fill as time passes
+      if (progressElement && remaining >= 0) {
+        const progressBar = progressElement.querySelector('.progress-bar');
+        if (progressBar) {
+          // Progress goes from 0% to 100% as time passes
+          const percentage = Math.min(100, ((totalDuration - remaining) / totalDuration) * 100);
+          progressBar.style.width = `${percentage}%`;
+          
+          // Update progress bar color based on remaining time
+          progressBar.classList.remove('progress-warning', 'progress-danger');
+          if (remaining <= 10000) {
+            progressBar.classList.add('progress-danger');
+          } else if (remaining <= 20000) {
+            progressBar.classList.add('progress-warning');
+          }
+        }
+      }
+      
+      // Update time spent tracking
       const elapsedSeconds = Math.floor(elapsed / 1000);
       this.stateManager.updateTimeSpent(currentQuestionIndex, elapsedSeconds);
-    }, 1000);
+      
+    }, 100); // Update every 100ms for smooth progress bar
   }
 
-  // Stop question timer
+  // FIXED: Stop question timer with proper cleanup
   stopQuestionTimer() {
     try {
-      const state = this.stateManager?.getState();
-      
-      if (state && state.enhancedTimer && this.customQuestionTimer) {
+      // Clean up CustomTimer instance
+      if (this.customQuestionTimer) {
         if (typeof this.customQuestionTimer.stop === 'function') {
           this.customQuestionTimer.stop();
         }
         this.customQuestionTimer = null;
-        if (this.timerElements.questionTimerProgress) {
-          this.timerElements.questionTimerProgress.classList.add('hidden');
-        }
-      } else {
-        if (this.questionTimer) {
-          clearInterval(this.questionTimer);
-          this.questionTimer = null;
-        }
-        if (this.timerElements.questionTimerProgress) {
-          this.timerElements.questionTimerProgress.classList.add('hidden');
-        }
       }
       
-      // Update final time spent for current question
+      // Clean up basic interval timer
+      if (this.questionTimer) {
+        clearInterval(this.questionTimer);
+        this.questionTimer = null;
+      }
+      
+      // Hide progress bar
+      if (this.timerElements.questionTimerProgress) {
+        this.timerElements.questionTimerProgress.classList.add('hidden');
+      }
+      
+      // FIXED: Save final time spent before clearing timer state
       if (this.questionStartTime && this.isValid()) {
         const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
         const currentQuestionIndex = this.stateManager.getCurrentQuestion();
-        const currentTimeSpent = this.stateManager.getTimeSpent()[currentQuestionIndex] || 0;
-        this.stateManager.updateTimeSpent(currentQuestionIndex, currentTimeSpent + elapsed);
+        
+        // FIXED: Don't double-count time - just set the final value
+        this.stateManager.updateTimeSpent(currentQuestionIndex, elapsed);
+        
+        // Clear timer state
         this.questionStartTime = null;
+        this.questionRemainingTime = this.QUESTION_TIME_LIMIT * 1000;
       }
     } catch (error) {
       console.error('Stop question timer error:', error);
     }
   }
 
-  // Format time helper function
+  // FIXED: Format time for question countdown display
+  formatQuestionCountdown(milliseconds) {
+    if (typeof milliseconds !== 'number' || milliseconds < 0) {
+      return '00:40'; // Default when timer not started
+    }
+    
+    // FIXED: Use Math.floor to avoid showing extra second
+    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  // Format time helper function (unchanged for main timer)
   formatTime(milliseconds) {
     if (typeof milliseconds !== 'number' || milliseconds < 0) {
       return '00:00';
@@ -651,7 +679,7 @@ class TestManager {
     }
   }
 
-  // Display current question
+  // FIXED: Display current question with proper timer reset
   displayQuestion() {
     if (!this.isValid()) return;
     
@@ -670,7 +698,7 @@ class TestManager {
         return;
       }
       
-      // Stop previous question timer
+      // CRITICAL: Stop previous question timer BEFORE doing anything else
       this.stopQuestionTimer();
       
       // Update question info
@@ -704,14 +732,42 @@ class TestManager {
         questionNumberSpan.innerHTML = `Question <span id="current-q-num">${currentQ + 1}</span> of ${currentQuestions.length}`;
       }
       
-      // Start question timer
-      this.startQuestionTimer();
+      // FIXED: Reset timer display before starting new timer
+      if (this.timerElements.questionTimer) {
+        this.timerElements.questionTimer.textContent = '00:40';
+        this.timerElements.questionTimer.classList.remove('warning', 'danger');
+      }
+      
+      // FIXED: Start fresh 40-second timer with slight delay for DOM updates
+      setTimeout(() => {
+        if (this.isValid()) {
+          this.startQuestionTimer();
+        }
+      }, 100);
+      
     } catch (error) {
       console.error('Display question error:', error);
     }
   }
 
-  // Display question options
+  // FIXED: Helper methods for question timer
+  getQuestionTimeLimit() {
+    return this.QUESTION_TIME_LIMIT; // Always 40 seconds
+  }
+
+  isQuestionTimeExpired() {
+    return this.questionRemainingTime <= 0;
+  }
+
+  getQuestionRemainingTime() {
+    return this.questionRemainingTime;
+  }
+
+  getQuestionRemainingSeconds() {
+    return Math.ceil(this.questionRemainingTime / 1000);
+  }
+
+  // Display question options (unchanged)
   displayOptions(question) {
     if (!question || !question.options) {
       console.error('Invalid question or missing options');
@@ -744,7 +800,7 @@ class TestManager {
     });
   }
 
-  // Update navigation buttons
+  // Update navigation buttons (unchanged)
   updateNavigationButtons(totalQuestions) {
     if (!totalQuestions || totalQuestions <= 0) return;
     
@@ -757,7 +813,7 @@ class TestManager {
     if (nextBtn) nextBtn.textContent = currentQ === totalQuestions - 1 ? 'Finish →' : 'Next →';
   }
 
-  // Select option
+  // Select option (unchanged)
   selectOption(optionIndex) {
     if (!this.isValid()) return;
     
@@ -776,7 +832,7 @@ class TestManager {
     }
   }
 
-  // Navigate between questions
+  // Navigate between questions (unchanged)
   navigateQuestion(direction) {
     if (!this.isValid()) return;
     
@@ -811,7 +867,7 @@ class TestManager {
     this.navigateQuestion(-1);
   }
 
-  // Toggle bookmark
+  // Toggle bookmark (unchanged)
   toggleBookmark() {
     if (!this.isValid()) return;
     
@@ -842,7 +898,7 @@ class TestManager {
     }
   }
 
-  // Clear answer
+  // Clear answer (unchanged)
   clearAnswer() {
     if (!this.isValid()) return;
     
@@ -861,7 +917,7 @@ class TestManager {
     }
   }
 
-  // Show review panel
+  // Show review panel (unchanged)
   showReviewPanel() {
     if (!this.isValid()) return;
     
@@ -873,7 +929,7 @@ class TestManager {
     }
   }
 
-  // Hide review panel
+  // Hide review panel (unchanged)
   hideReviewPanel() {
     if (!this.isValid()) return;
     
@@ -884,7 +940,7 @@ class TestManager {
     }
   }
 
-  // Update review grid
+  // Update review grid (unchanged)
   updateReviewGrid() {
     if (!this.isValid()) return;
     
@@ -958,7 +1014,7 @@ class TestManager {
     }
   }
 
-  // Submit test
+  // Submit test (unchanged)
   submitTest() {
     if (!this.isValid()) return;
     
@@ -980,7 +1036,7 @@ class TestManager {
     }
   }
 
-  // Calculate test results
+  // Calculate test results (unchanged)
   calculateResults() {
     if (!this.isValid()) return;
     
@@ -1051,7 +1107,7 @@ class TestManager {
     }
   }
 
-  // Display test results
+  // Display test results (unchanged)
   displayResults() {
     if (!this.isValid()) return;
     
@@ -1087,7 +1143,7 @@ class TestManager {
     }
   }
 
-  // Setup chart canvases
+  // Setup chart canvases (unchanged)
   setupCharts() {
     try {
       ['topic-chart', 'difficulty-chart'].forEach(chartId => {
@@ -1106,7 +1162,7 @@ class TestManager {
     }
   }
 
-  // Draw topic-wise accuracy chart
+  // Draw topic-wise accuracy chart (unchanged)
   drawTopicChart(topicStats) {
     if (!topicStats) return;
     
@@ -1176,7 +1232,7 @@ class TestManager {
     }
   }
 
-  // Draw difficulty-wise performance chart
+  // Draw difficulty-wise performance chart (unchanged)
   drawDifficultyChart(difficultyStats) {
     if (!difficultyStats) return;
     
@@ -1235,7 +1291,7 @@ class TestManager {
     }
   }
 
-  // Display performance analysis
+  // Display performance analysis (unchanged)
   displayAnalysis(results) {
     if (!results) return;
     
@@ -1314,7 +1370,7 @@ class TestManager {
     }
   }
 
-  // Populate results table
+  // Populate results table (unchanged)
   populateResultsTable(questionResults) {
     if (!questionResults) return;
     
@@ -1339,7 +1395,7 @@ class TestManager {
     }
   }
 
-  // Populate review answers for review view
+  // Populate review answers for review view (unchanged)
   populateReviewAnswers() {
     if (!this.isValid()) return;
     
@@ -1405,7 +1461,7 @@ class TestManager {
     }
   }
 
-  // Get current questions with validation
+  // Get current questions with validation (unchanged)
   getCurrentQuestions() {
     try {
       const state = this.stateManager?.getState();
