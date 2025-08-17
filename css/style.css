@@ -1851,9 +1851,12 @@ body {
   margin-bottom: var(--space-8);
 }
 
+/* Main Timer Progress Bar (header) */
 .enhanced-timer .progress-container,
 .enhanced-timer .timer-progress {
-  width: 200px;
+  width: 180px;   /* limit width */
+  height: 8px;
+  margin-top: var(--space-8);
 }
 
 /* ================================
@@ -1871,10 +1874,12 @@ body {
   font-size: var(--font-size-base);
 }
 
+/* Question Timer Progress Bar (per question) */
 .question-timer-enhanced .progress-container,
 .question-timer-enhanced .timer-progress {
-  width: 100px;
+  width: 120px;   /* smaller than main */
   height: 4px;
+  margin-top: var(--space-4);
 }
 
 /* JSON Upload Section Styles */
