@@ -3,6 +3,11 @@
 
 class TestManager {
   constructor(stateManager, viewManager, questionManager) {
+    // Validate required dependencies
+    if (!stateManager || !viewManager) {
+      throw new Error('StateManager and ViewManager are required dependencies');
+    }
+    
     this.stateManager = stateManager;
     this.viewManager = viewManager;
     this.questionManager = questionManager;
@@ -17,10 +22,89 @@ class TestManager {
     
     // Timer DOM elements cache
     this.timerElements = {};
+    
+    // Add cleanup flag to prevent operations after destruction
+    this.isDestroyed = false;
+    
+    // Bind methods to preserve context
+    this.submitTest = this.submitTest.bind(this);
+    this.nextQuestion = this.nextQuestion.bind(this);
+    this.previousQuestion = this.previousQuestion.bind(this);
+    this.toggleBookmark = this.toggleBookmark.bind(this);
+    this.clearAnswer = this.clearAnswer.bind(this);
+  }
+
+  // Cleanup method to prevent memory leaks
+  destroy() {
+    this.isDestroyed = true;
+    this.stopAllTimers();
+    this.clearAutoSave();
+    this.timerElements = {};
+  }
+
+  // Check if manager is still valid
+  isValid() {
+    return !this.isDestroyed && this.stateManager && this.viewManager;
+  }
+
+  // Stop all timers safely
+  stopAllTimers() {
+    try {
+      // Clear standard timers
+      if (this.mainTimer) {
+        clearInterval(this.mainTimer);
+        this.mainTimer = null;
+      }
+      
+      if (this.questionTimer) {
+        clearInterval(this.questionTimer);
+        this.questionTimer = null;
+      }
+      
+      // Clear custom timers
+      if (this.customMainTimer && typeof this.customMainTimer.stop === 'function') {
+        this.customMainTimer.stop();
+        this.customMainTimer = null;
+      }
+      
+      if (this.customQuestionTimer && typeof this.customQuestionTimer.stop === 'function') {
+        this.customQuestionTimer.stop();
+        this.customQuestionTimer = null;
+      }
+      
+      // Hide progress bars safely
+      this.hideProgressBars();
+    } catch (error) {
+      console.error('Error stopping timers:', error);
+    }
+  }
+
+  // Safely hide progress bars
+  hideProgressBars() {
+    try {
+      if (this.timerElements.mainTimerProgress) {
+        this.timerElements.mainTimerProgress.classList.add('hidden');
+      }
+      if (this.timerElements.questionTimerProgress) {
+        this.timerElements.questionTimerProgress.classList.add('hidden');
+      }
+    } catch (error) {
+      console.error('Error hiding progress bars:', error);
+    }
+  }
+
+  // Clear auto-save interval safely
+  clearAutoSave() {
+    if (this.autoSaveInterval) {
+      clearInterval(this.autoSaveInterval);
+      this.autoSaveInterval = null;
+    }
   }
 
   // Initialize timer elements and cache them
   initializeTimerElements() {
+    if (!this.isValid()) return;
+    
     try {
       this.timerElements = {
         mainTimer: document.getElementById('main-timer'),
@@ -39,57 +123,86 @@ class TestManager {
   // Ensure timer elements exist in DOM
   ensureTimerElementsExist() {
     const testView = document.getElementById('test-view');
-    if (!testView) return;
-
-    // Create main timer if it doesn't exist
-    if (!this.timerElements.mainTimer) {
-      const timerContainer = testView.querySelector('.timer-section') || testView.querySelector('.test-header');
-      if (timerContainer) {
-        const mainTimerDiv = document.createElement('div');
-        mainTimerDiv.className = 'main-timer-container';
-        mainTimerDiv.innerHTML = `
-          <div class="timer-display">
-            <span class="timer-label">Time Remaining:</span>
-            <span id="main-timer" class="timer-value">00:00</span>
-          </div>
-          <div id="main-timer-progress" class="timer-progress hidden">
-            <div class="progress-bar"></div>
-          </div>
-        `;
-        timerContainer.appendChild(mainTimerDiv);
-        this.timerElements.mainTimer = document.getElementById('main-timer');
-        this.timerElements.mainTimerProgress = document.getElementById('main-timer-progress');
-      }
+    if (!testView) {
+      console.warn('Test view not found, cannot create timer elements');
+      return;
     }
 
-    // Create question timer if it doesn't exist
-    if (!this.timerElements.questionTimer) {
-      const questionContainer = testView.querySelector('.question-container') || testView.querySelector('.question-section');
-      if (questionContainer) {
-        const questionTimerDiv = document.createElement('div');
-        questionTimerDiv.className = 'question-timer-container';
-        questionTimerDiv.innerHTML = `
-          <div class="timer-display">
-            <span class="timer-label">Question Time:</span>
-            <span id="question-timer" class="timer-value">00:00</span>
-          </div>
-          <div id="question-timer-progress" class="timer-progress hidden">
-            <div class="progress-bar"></div>
-          </div>
-        `;
-        questionContainer.insertBefore(questionTimerDiv, questionContainer.firstChild);
-        this.timerElements.questionTimer = document.getElementById('question-timer');
-        this.timerElements.questionTimerProgress = document.getElementById('question-timer-progress');
+    try {
+      // Create main timer if it doesn't exist
+      if (!this.timerElements.mainTimer) {
+        this.createMainTimerElement(testView);
       }
+
+      // Create question timer if it doesn't exist
+      if (!this.timerElements.questionTimer) {
+        this.createQuestionTimerElement(testView);
+      }
+    } catch (error) {
+      console.error('Error creating timer elements:', error);
+    }
+  }
+
+  // Create main timer element
+  createMainTimerElement(testView) {
+    const timerContainer = testView.querySelector('.timer-section') || 
+                          testView.querySelector('.test-header') ||
+                          testView.querySelector('.header');
+    
+    if (timerContainer) {
+      const mainTimerDiv = document.createElement('div');
+      mainTimerDiv.className = 'main-timer-container';
+      mainTimerDiv.innerHTML = `
+        <div class="timer-display">
+          <span class="timer-label">Time Remaining:</span>
+          <span id="main-timer" class="timer-value">00:00</span>
+        </div>
+        <div id="main-timer-progress" class="timer-progress hidden">
+          <div class="progress-bar"></div>
+        </div>
+      `;
+      timerContainer.appendChild(mainTimerDiv);
+      this.timerElements.mainTimer = document.getElementById('main-timer');
+      this.timerElements.mainTimerProgress = document.getElementById('main-timer-progress');
+    }
+  }
+
+  // Create question timer element
+  createQuestionTimerElement(testView) {
+    const questionContainer = testView.querySelector('.question-container') || 
+                             testView.querySelector('.question-section') ||
+                             testView.querySelector('.content');
+    
+    if (questionContainer) {
+      const questionTimerDiv = document.createElement('div');
+      questionTimerDiv.className = 'question-timer-container';
+      questionTimerDiv.innerHTML = `
+        <div class="timer-display">
+          <span class="timer-label">Question Time:</span>
+          <span id="question-timer" class="timer-value">00:00</span>
+        </div>
+        <div id="question-timer-progress" class="timer-progress hidden">
+          <div class="progress-bar"></div>
+        </div>
+      `;
+      questionContainer.insertBefore(questionTimerDiv, questionContainer.firstChild);
+      this.timerElements.questionTimer = document.getElementById('question-timer');
+      this.timerElements.questionTimerProgress = document.getElementById('question-timer-progress');
     }
   }
 
   // Start test timer
   startMainTimer() {
+    if (!this.isValid()) return;
+    
     try {
+      // Stop any existing timer first
+      this.stopMainTimer();
+      
       this.initializeTimerElements();
       const state = this.stateManager.getState();
-      if (state.enhancedTimer) {
+      
+      if (state && state.enhancedTimer) {
         this.startEnhancedMainTimer();
       } else {
         this.startBasicMainTimer();
@@ -99,13 +212,37 @@ class TestManager {
     }
   }
 
+  // Stop main timer safely
+  stopMainTimer() {
+    try {
+      if (this.mainTimer) {
+        clearInterval(this.mainTimer);
+        this.mainTimer = null;
+      }
+      
+      if (this.customMainTimer && typeof this.customMainTimer.stop === 'function') {
+        this.customMainTimer.stop();
+        this.customMainTimer = null;
+      }
+      
+      if (this.timerElements.mainTimerProgress) {
+        this.timerElements.mainTimerProgress.classList.add('hidden');
+      }
+    } catch (error) {
+      console.error('Error stopping main timer:', error);
+    }
+  }
+
   // Start enhanced main timer with progress and alerts
   startEnhancedMainTimer() {
-    if (this.customMainTimer) {
-      this.customMainTimer.stop();
-    }
+    this.stopMainTimer();
     
     const state = this.stateManager.getState();
+    if (!state || !state.testDuration) {
+      console.error('Invalid state or missing test duration');
+      return;
+    }
+    
     const timerElement = this.timerElements.mainTimer;
     const progressElement = this.timerElements.mainTimerProgress;
     
@@ -121,20 +258,29 @@ class TestManager {
     
     // Use a simple enhanced timer if CustomTimer is not available
     if (typeof CustomTimer !== 'undefined') {
-      this.customMainTimer = new CustomTimer({
-        duration: state.testDuration,
-        element: timerElement,
-        progressElement: progressElement,
-        audioAlert: true,
-        visualAlert: true,
-        warningThresholds: [10, 5, 2],
-        onComplete: () => this.submitTest(),
-        onWarning: (threshold) => {
-          console.log(`Timer warning: ${threshold} minutes remaining`);
-        }
-      });
-      
-      this.customMainTimer.start();
+      try {
+        this.customMainTimer = new CustomTimer({
+          duration: state.testDuration,
+          element: timerElement,
+          progressElement: progressElement,
+          audioAlert: true,
+          visualAlert: true,
+          warningThresholds: [10, 5, 2],
+          onComplete: () => {
+            if (this.isValid()) {
+              this.submitTest();
+            }
+          },
+          onWarning: (threshold) => {
+            console.log(`Timer warning: ${threshold} minutes remaining`);
+          }
+        });
+        
+        this.customMainTimer.start();
+      } catch (error) {
+        console.error('Error creating CustomTimer, falling back:', error);
+        this.startEnhancedBasicMainTimer();
+      }
     } else {
       // Fallback to basic timer with enhanced features
       this.startEnhancedBasicMainTimer();
@@ -143,9 +289,14 @@ class TestManager {
 
   // Enhanced basic main timer (fallback)
   startEnhancedBasicMainTimer() {
-    if (this.mainTimer) clearInterval(this.mainTimer);
+    this.stopMainTimer();
     
     const state = this.stateManager.getState();
+    if (!state || !state.testDuration || !state.testStart) {
+      console.error('Invalid state for timer');
+      return;
+    }
+    
     const timerElement = this.timerElements.mainTimer;
     const progressElement = this.timerElements.mainTimerProgress;
     const totalDuration = state.testDuration * 60 * 1000;
@@ -155,6 +306,11 @@ class TestManager {
     }
     
     this.mainTimer = setInterval(() => {
+      if (!this.isValid()) {
+        this.stopMainTimer();
+        return;
+      }
+      
       const elapsed = Date.now() - state.testStart;
       const remaining = totalDuration - elapsed;
       
@@ -180,7 +336,7 @@ class TestManager {
       if (progressElement) {
         const progressBar = progressElement.querySelector('.progress-bar');
         if (progressBar) {
-          const percentage = ((totalDuration - remaining) / totalDuration) * 100;
+          const percentage = Math.max(0, Math.min(100, ((totalDuration - remaining) / totalDuration) * 100));
           progressBar.style.width = `${percentage}%`;
         }
       }
@@ -189,9 +345,14 @@ class TestManager {
 
   // Start basic main timer
   startBasicMainTimer() {
-    if (this.mainTimer) clearInterval(this.mainTimer);
+    this.stopMainTimer();
     
     const state = this.stateManager.getState();
+    if (!state || !state.testDuration || !state.testStart) {
+      console.error('Invalid state for basic timer');
+      return;
+    }
+    
     const timerElement = this.timerElements.mainTimer;
     
     if (!timerElement) {
@@ -200,6 +361,11 @@ class TestManager {
     }
     
     this.mainTimer = setInterval(() => {
+      if (!this.isValid()) {
+        this.stopMainTimer();
+        return;
+      }
+      
       const elapsed = Date.now() - state.testStart;
       const remaining = (state.testDuration * 60 * 1000) - elapsed;
       
@@ -223,10 +389,16 @@ class TestManager {
 
   // Start question timer
   startQuestionTimer() {
+    if (!this.isValid()) return;
+    
     try {
+      // Stop any existing question timer first
+      this.stopQuestionTimer();
+      
       this.initializeTimerElements();
       const state = this.stateManager.getState();
-      if (state.enhancedTimer) {
+      
+      if (state && state.enhancedTimer) {
         this.startEnhancedQuestionTimer();
       } else {
         this.startBasicQuestionTimer();
@@ -238,9 +410,7 @@ class TestManager {
 
   // Start enhanced question timer
   startEnhancedQuestionTimer() {
-    if (this.customQuestionTimer) {
-      this.customQuestionTimer.stop();
-    }
+    this.stopQuestionTimer();
     
     const timerElement = this.timerElements.questionTimer;
     const progressElement = this.timerElements.questionTimerProgress;
@@ -256,7 +426,13 @@ class TestManager {
     }
     
     const currentQuestions = this.getCurrentQuestions();
-    const currentQuestion = currentQuestions[this.stateManager.getCurrentQuestion()];
+    if (!currentQuestions || currentQuestions.length === 0) {
+      console.error('No questions available for timer');
+      return;
+    }
+    
+    const currentQuestionIndex = this.stateManager.getCurrentQuestion();
+    const currentQuestion = currentQuestions[currentQuestionIndex];
     const timeLimit = (currentQuestion && currentQuestion.timeLimit) ? 
       currentQuestion.timeLimit / 60 : 5; // Default 5 minutes per question
     
@@ -264,20 +440,27 @@ class TestManager {
     
     // Use CustomTimer if available, otherwise fallback
     if (typeof CustomTimer !== 'undefined') {
-      this.customQuestionTimer = new CustomTimer({
-        duration: timeLimit,
-        element: timerElement,
-        progressElement: progressElement,
-        audioAlert: false,
-        visualAlert: true,
-        warningThresholds: [2, 1],
-        onTick: (remaining) => {
-          const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
-          this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsed);
-        }
-      });
-      
-      this.customQuestionTimer.start();
+      try {
+        this.customQuestionTimer = new CustomTimer({
+          duration: timeLimit,
+          element: timerElement,
+          progressElement: progressElement,
+          audioAlert: false,
+          visualAlert: true,
+          warningThresholds: [2, 1],
+          onTick: (remaining) => {
+            if (this.isValid() && this.questionStartTime) {
+              const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
+              this.stateManager.updateTimeSpent(currentQuestionIndex, elapsed);
+            }
+          }
+        });
+        
+        this.customQuestionTimer.start();
+      } catch (error) {
+        console.error('Error creating custom question timer:', error);
+        this.startEnhancedBasicQuestionTimer(timeLimit);
+      }
     } else {
       this.startEnhancedBasicQuestionTimer(timeLimit);
     }
@@ -285,15 +468,21 @@ class TestManager {
 
   // Enhanced basic question timer (fallback)
   startEnhancedBasicQuestionTimer(timeLimit) {
-    if (this.questionTimer) clearInterval(this.questionTimer);
+    this.stopQuestionTimer();
     
     const timerElement = this.timerElements.questionTimer;
     const progressElement = this.timerElements.questionTimerProgress;
     const totalDuration = timeLimit * 60 * 1000;
     
     this.questionStartTime = Date.now();
+    const currentQuestionIndex = this.stateManager.getCurrentQuestion();
     
     this.questionTimer = setInterval(() => {
+      if (!this.isValid() || !this.questionStartTime) {
+        this.stopQuestionTimer();
+        return;
+      }
+      
       const elapsed = Date.now() - this.questionStartTime;
       const remaining = totalDuration - elapsed;
       
@@ -319,14 +508,14 @@ class TestManager {
       if (progressElement && remaining > 0) {
         const progressBar = progressElement.querySelector('.progress-bar');
         if (progressBar) {
-          const percentage = ((totalDuration - elapsed) / totalDuration) * 100;
-          progressBar.style.width = `${Math.max(0, percentage)}%`;
+          const percentage = Math.max(0, Math.min(100, ((totalDuration - elapsed) / totalDuration) * 100));
+          progressBar.style.width = `${percentage}%`;
         }
       }
       
       // Update time spent
       const elapsedSeconds = Math.floor(elapsed / 1000);
-      this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsedSeconds);
+      this.stateManager.updateTimeSpent(currentQuestionIndex, elapsedSeconds);
     }, 1000);
   }
 
@@ -334,7 +523,9 @@ class TestManager {
   startBasicQuestionTimer() {
     this.questionStartTime = Date.now();
     
-    if (this.questionTimer) clearInterval(this.questionTimer);
+    if (this.questionTimer) {
+      clearInterval(this.questionTimer);
+    }
     
     const timerElement = this.timerElements.questionTimer;
     
@@ -343,24 +534,33 @@ class TestManager {
       return;
     }
     
+    const currentQuestionIndex = this.stateManager.getCurrentQuestion();
+    
     this.questionTimer = setInterval(() => {
+      if (!this.isValid() || !this.questionStartTime) {
+        this.stopQuestionTimer();
+        return;
+      }
+      
       const elapsed = Date.now() - this.questionStartTime;
       const timeString = this.formatTime(elapsed);
       timerElement.textContent = timeString;
       
       // Update time spent
       const elapsedSeconds = Math.floor(elapsed / 1000);
-      this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsedSeconds);
+      this.stateManager.updateTimeSpent(currentQuestionIndex, elapsedSeconds);
     }, 1000);
   }
 
   // Stop question timer
   stopQuestionTimer() {
     try {
-      const state = this.stateManager.getState();
+      const state = this.stateManager?.getState();
       
-      if (state.enhancedTimer && this.customQuestionTimer) {
-        this.customQuestionTimer.stop();
+      if (state && state.enhancedTimer && this.customQuestionTimer) {
+        if (typeof this.customQuestionTimer.stop === 'function') {
+          this.customQuestionTimer.stop();
+        }
         this.customQuestionTimer = null;
         if (this.timerElements.questionTimerProgress) {
           this.timerElements.questionTimerProgress.classList.add('hidden');
@@ -375,10 +575,12 @@ class TestManager {
         }
       }
       
-      if (this.questionStartTime) {
+      // Update final time spent for current question
+      if (this.questionStartTime && this.isValid()) {
         const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
-        const currentTimeSpent = this.stateManager.getTimeSpent()[this.stateManager.getCurrentQuestion()] || 0;
-        this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), currentTimeSpent + elapsed);
+        const currentQuestionIndex = this.stateManager.getCurrentQuestion();
+        const currentTimeSpent = this.stateManager.getTimeSpent()[currentQuestionIndex] || 0;
+        this.stateManager.updateTimeSpent(currentQuestionIndex, currentTimeSpent + elapsed);
         this.questionStartTime = null;
       }
     } catch (error) {
@@ -388,6 +590,10 @@ class TestManager {
 
   // Format time helper function
   formatTime(milliseconds) {
+    if (typeof milliseconds !== 'number' || milliseconds < 0) {
+      return '00:00';
+    }
+    
     const totalSeconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -396,11 +602,17 @@ class TestManager {
 
   // Start auto-save
   startAutoSave() {
+    if (!this.isValid()) return;
+    
     try {
-      if (this.autoSaveInterval) clearInterval(this.autoSaveInterval);
+      this.clearAutoSave();
       
       this.autoSaveInterval = setInterval(() => {
-        this.stateManager.saveState();
+        if (this.isValid()) {
+          this.stateManager.saveState();
+        } else {
+          this.clearAutoSave();
+        }
       }, 5000); // Save every 5 seconds
     } catch (error) {
       console.error('Start auto save error:', error);
@@ -409,6 +621,8 @@ class TestManager {
 
   // Update question display (called when view is activated)
   updateQuestionDisplay() {
+    if (!this.isValid()) return;
+    
     try {
       this.initializeTimerElements();
       this.displayQuestion();
@@ -419,12 +633,14 @@ class TestManager {
 
   // Initialize review functionality
   initializeReview() {
+    if (!this.isValid()) return;
+    
     try {
       // Set initial review question to 0
       this.stateManager.updateState({ reviewCurrentQ: 0 });
       
       // Initialize review display if we're using the single-question review view
-      if (window.app && window.app.updateReviewDisplay) {
+      if (window.app && typeof window.app.updateReviewDisplay === 'function') {
         window.app.updateReviewDisplay(0);
       } else {
         // Fallback: populate full review answers
@@ -437,8 +653,15 @@ class TestManager {
 
   // Display current question
   displayQuestion() {
+    if (!this.isValid()) return;
+    
     try {
       const currentQuestions = this.getCurrentQuestions();
+      if (!currentQuestions || currentQuestions.length === 0) {
+        console.error('No questions available to display');
+        return;
+      }
+      
       const currentQ = this.stateManager.getCurrentQuestion();
       const question = currentQuestions[currentQ];
       
@@ -490,8 +713,16 @@ class TestManager {
 
   // Display question options
   displayOptions(question) {
+    if (!question || !question.options) {
+      console.error('Invalid question or missing options');
+      return;
+    }
+    
     const optionsContainer = document.getElementById('options-container');
-    if (!optionsContainer) return;
+    if (!optionsContainer) {
+      console.warn('Options container not found');
+      return;
+    }
     
     const currentAnswer = this.stateManager.getAnswers()[this.stateManager.getCurrentQuestion()];
     
@@ -515,6 +746,8 @@ class TestManager {
 
   // Update navigation buttons
   updateNavigationButtons(totalQuestions) {
+    if (!totalQuestions || totalQuestions <= 0) return;
+    
     const currentQ = this.stateManager.getCurrentQuestion();
     
     const prevBtn = document.getElementById('prev-btn');
@@ -526,6 +759,8 @@ class TestManager {
 
   // Select option
   selectOption(optionIndex) {
+    if (!this.isValid()) return;
+    
     try {
       const currentQ = this.stateManager.getCurrentQuestion();
       this.stateManager.setAnswer(currentQ, optionIndex);
@@ -543,8 +778,15 @@ class TestManager {
 
   // Navigate between questions
   navigateQuestion(direction) {
+    if (!this.isValid()) return;
+    
     try {
       const currentQuestions = this.getCurrentQuestions();
+      if (!currentQuestions || currentQuestions.length === 0) {
+        console.error('No questions available for navigation');
+        return;
+      }
+      
       const currentQ = this.stateManager.getCurrentQuestion();
       const newQ = currentQ + direction;
       
@@ -571,6 +813,8 @@ class TestManager {
 
   // Toggle bookmark
   toggleBookmark() {
+    if (!this.isValid()) return;
+    
     try {
       const currentQ = this.stateManager.getCurrentQuestion();
       this.stateManager.toggleBookmark(currentQ);
@@ -585,7 +829,9 @@ class TestManager {
         // Add temporary visual feedback
         bookmarkBtn.style.transform = 'scale(1.1)';
         setTimeout(() => {
-          bookmarkBtn.style.transform = '';
+          if (bookmarkBtn) {
+            bookmarkBtn.style.transform = '';
+          }
         }, 150);
       }
       
@@ -598,6 +844,8 @@ class TestManager {
 
   // Clear answer
   clearAnswer() {
+    if (!this.isValid()) return;
+    
     try {
       const currentQ = this.stateManager.getCurrentQuestion();
       this.stateManager.clearAnswer(currentQ);
@@ -615,6 +863,8 @@ class TestManager {
 
   // Show review panel
   showReviewPanel() {
+    if (!this.isValid()) return;
+    
     try {
       this.updateReviewGrid();
       this.viewManager.showModal('review-panel');
@@ -625,6 +875,8 @@ class TestManager {
 
   // Hide review panel
   hideReviewPanel() {
+    if (!this.isValid()) return;
+    
     try {
       this.viewManager.hideModal('review-panel');
     } catch (error) {
@@ -634,11 +886,21 @@ class TestManager {
 
   // Update review grid
   updateReviewGrid() {
+    if (!this.isValid()) return;
+    
     try {
       const reviewGrid = document.getElementById('review-grid');
-      if (!reviewGrid) return;
+      if (!reviewGrid) {
+        console.warn('Review grid not found');
+        return;
+      }
       
       const currentQuestions = this.getCurrentQuestions();
+      if (!currentQuestions || currentQuestions.length === 0) {
+        console.error('No questions available for review grid');
+        return;
+      }
+      
       const state = this.stateManager.getState();
       
       reviewGrid.innerHTML = '';
@@ -653,7 +915,7 @@ class TestManager {
           item.classList.add('current');
         }
         
-        if (state.answers[i] !== null) {
+        if (state.answers[i] !== null && state.answers[i] !== undefined) {
           item.classList.add('answered');
         } else {
           item.classList.add('unanswered');
@@ -670,15 +932,23 @@ class TestManager {
         
         // Add tooltip showing status
         const status = [];
-        if (state.answers[i] !== null) status.push('Answered');
-        if (state.bookmarked[i]) status.push('Bookmarked');
-        if (status.length === 0) status.push('Not answered');
+        if (state.answers[i] !== null && state.answers[i] !== undefined) {
+          status.push('Answered');
+        }
+        if (state.bookmarked[i]) {
+          status.push('Bookmarked');
+        }
+        if (status.length === 0) {
+          status.push('Not answered');
+        }
         item.title = `Question ${i + 1}: ${status.join(', ')}`;
         
         item.addEventListener('click', () => {
-          this.stateManager.setCurrentQuestion(i);
-          this.hideReviewPanel();
-          this.displayQuestion();
+          if (this.isValid()) {
+            this.stateManager.setCurrentQuestion(i);
+            this.hideReviewPanel();
+            this.displayQuestion();
+          }
         });
         
         reviewGrid.appendChild(item);
@@ -690,37 +960,16 @@ class TestManager {
 
   // Submit test
   submitTest() {
+    if (!this.isValid()) return;
+    
     if (!confirm('Are you sure you want to submit your test? You cannot change your answers after submission.')) {
       return;
     }
     
     try {
       this.stateManager.setTestEnd();
-      this.stopQuestionTimer();
-      
-      // Stop timers
-      const state = this.stateManager.getState();
-      if (state.enhancedTimer) {
-        if (this.customMainTimer) {
-          this.customMainTimer.stop();
-          this.customMainTimer = null;
-        }
-        if (this.customQuestionTimer) {
-          this.customQuestionTimer.stop();
-          this.customQuestionTimer = null;
-        }
-        // Hide progress bars
-        if (this.timerElements.mainTimerProgress) {
-          this.timerElements.mainTimerProgress.classList.add('hidden');
-        }
-        if (this.timerElements.questionTimerProgress) {
-          this.timerElements.questionTimerProgress.classList.add('hidden');
-        }
-      } else {
-        if (this.mainTimer) clearInterval(this.mainTimer);
-      }
-      
-      if (this.autoSaveInterval) clearInterval(this.autoSaveInterval);
+      this.stopAllTimers();
+      this.clearAutoSave();
       
       this.calculateResults();
       this.displayResults();
@@ -733,8 +982,15 @@ class TestManager {
 
   // Calculate test results
   calculateResults() {
+    if (!this.isValid()) return;
+    
     try {
       const currentQuestions = this.getCurrentQuestions();
+      if (!currentQuestions || currentQuestions.length === 0) {
+        console.error('No questions available for result calculation');
+        return;
+      }
+      
       const state = this.stateManager.getState();
       const totalQuestions = currentQuestions.length;
       
@@ -751,7 +1007,7 @@ class TestManager {
       for (let i = 0; i < totalQuestions; i++) {
         const question = currentQuestions[i];
         const userAnswer = state.answers[i];
-        const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+        const isCorrect = userAnswer !== null && userAnswer !== undefined && userAnswer === question.correctIndex;
         const timeSpent = state.timeSpent[i] || 0;
         
         if (isCorrect) results.score++;
@@ -765,14 +1021,14 @@ class TestManager {
           correctAnswer: question.correctIndex,
           isCorrect: isCorrect,
           timeSpent: timeSpent,
-          status: userAnswer === null ? 'unanswered' : (isCorrect ? 'correct' : 'incorrect')
+          status: userAnswer === null || userAnswer === undefined ? 'unanswered' : (isCorrect ? 'correct' : 'incorrect')
         });
         
         // Topic stats
         if (!results.topicStats[question.topic]) {
           results.topicStats[question.topic] = { attempted: 0, correct: 0, timeTotal: 0 };
         }
-        if (userAnswer !== null) {
+        if (userAnswer !== null && userAnswer !== undefined) {
           results.topicStats[question.topic].attempted++;
           if (isCorrect) results.topicStats[question.topic].correct++;
         }
@@ -782,7 +1038,7 @@ class TestManager {
         if (!results.difficultyStats[question.difficulty]) {
           results.difficultyStats[question.difficulty] = { attempted: 0, correct: 0, timeTotal: 0 };
         }
-        if (userAnswer !== null) {
+        if (userAnswer !== null && userAnswer !== undefined) {
           results.difficultyStats[question.difficulty].attempted++;
           if (isCorrect) results.difficultyStats[question.difficulty].correct++;
         }
@@ -797,9 +1053,14 @@ class TestManager {
 
   // Display test results
   displayResults() {
+    if (!this.isValid()) return;
+    
     try {
       const results = this.stateManager.getResults();
-      if (!results) return;
+      if (!results) {
+        console.error('No results available to display');
+        return;
+      }
       
       const scorePercentage = Math.round((results.score / results.totalQuestions) * 100);
       
@@ -833,9 +1094,11 @@ class TestManager {
         const canvas = document.getElementById(chartId);
         if (canvas) {
           const container = canvas.parentElement;
-          const rect = container.getBoundingClientRect();
-          canvas.width = rect.width || 300;
-          canvas.height = rect.height || 300;
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width || 300;
+            canvas.height = rect.height || 300;
+          }
         }
       });
     } catch (error) {
@@ -845,11 +1108,15 @@ class TestManager {
 
   // Draw topic-wise accuracy chart
   drawTopicChart(topicStats) {
+    if (!topicStats) return;
+    
     try {
       const canvas = document.getElementById('topic-chart');
       if (!canvas) return;
       
       const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       const radius = Math.min(centerX, centerY) - 20;
@@ -911,11 +1178,15 @@ class TestManager {
 
   // Draw difficulty-wise performance chart
   drawDifficultyChart(difficultyStats) {
+    if (!difficultyStats) return;
+    
     try {
       const canvas = document.getElementById('difficulty-chart');
       if (!canvas) return;
       
       const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       const difficulties = ['Easy', 'Medium', 'Hard'];
@@ -966,6 +1237,8 @@ class TestManager {
 
   // Display performance analysis
   displayAnalysis(results) {
+    if (!results) return;
+    
     try {
       // Strengths and weaknesses
       const topics = Object.entries(results.topicStats)
@@ -1043,6 +1316,8 @@ class TestManager {
 
   // Populate results table
   populateResultsTable(questionResults) {
+    if (!questionResults) return;
+    
     try {
       const tbody = document.querySelector('#results-table tbody');
       if (!tbody) return;
@@ -1066,12 +1341,22 @@ class TestManager {
 
   // Populate review answers for review view
   populateReviewAnswers() {
+    if (!this.isValid()) return;
+    
     try {
       const currentQuestions = this.getCurrentQuestions();
+      if (!currentQuestions || currentQuestions.length === 0) {
+        console.error('No questions available for review');
+        return;
+      }
+      
       const state = this.stateManager.getState();
       const results = this.stateManager.getResults();
       
-      if (!results) return;
+      if (!results) {
+        console.warn('No results available for review');
+        return;
+      }
       
       const reviewContainer = document.getElementById('review-answers-container');
       if (!reviewContainer) return;
@@ -1080,11 +1365,11 @@ class TestManager {
       
       currentQuestions.forEach((question, index) => {
         const userAnswer = state.answers[index];
-        const isCorrect = userAnswer !== null && userAnswer === question.correctIndex;
+        const isCorrect = userAnswer !== null && userAnswer !== undefined && userAnswer === question.correctIndex;
         const timeSpent = state.timeSpent[index] || 0;
         
         const reviewItem = document.createElement('div');
-        reviewItem.className = `review-answer-item ${isCorrect ? 'correct' : userAnswer !== null ? 'incorrect' : 'unanswered'}`;
+        reviewItem.className = `review-answer-item ${isCorrect ? 'correct' : userAnswer !== null && userAnswer !== undefined ? 'incorrect' : 'unanswered'}`;
         
         reviewItem.innerHTML = `
           <div class="review-question-header">
@@ -1092,8 +1377,8 @@ class TestManager {
             <div class="review-badges">
               <span class="topic-badge">${question.topic}</span>
               <span class="difficulty-badge ${question.difficulty.toLowerCase()}">${question.difficulty}</span>
-              <span class="status-badge ${isCorrect ? 'correct' : userAnswer !== null ? 'incorrect' : 'unanswered'}">
-                ${userAnswer === null ? 'Not Answered' : isCorrect ? 'Correct' : 'Incorrect'}
+              <span class="status-badge ${isCorrect ? 'correct' : userAnswer !== null && userAnswer !== undefined ? 'incorrect' : 'unanswered'}">
+                ${userAnswer === null || userAnswer === undefined ? 'Not Answered' : isCorrect ? 'Correct' : 'Incorrect'}
               </span>
             </div>
           </div>
@@ -1120,10 +1405,15 @@ class TestManager {
     }
   }
 
-  // Get current questions
+  // Get current questions with validation
   getCurrentQuestions() {
-    const state = this.stateManager.getState();
-    return state.customQuestions || window.DEFAULT_QUESTIONS || [];
+    try {
+      const state = this.stateManager?.getState();
+      return state?.customQuestions || window.DEFAULT_QUESTIONS || [];
+    } catch (error) {
+      console.error('Error getting current questions:', error);
+      return [];
+    }
   }
 }
 
