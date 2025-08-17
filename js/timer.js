@@ -3,75 +3,35 @@
 
 class CustomTimer {
   constructor(options = {}) {
-    // FIXED: Accept duration in seconds for consistency, but maintain backward compatibility
-    this.duration = options.duration || 60; // Duration in seconds (changed from minutes)
-    this.isLegacyMode = options.legacyMinutes || false; // Support old minute-based calls
-    
-    // Convert legacy minute values to seconds
-    if (this.isLegacyMode || this.duration > 600) { // Assume > 10 minutes means legacy mode
-      this.duration = this.duration * 60; // Convert minutes to seconds
-    }
-    
+    this.duration = options.duration || 60; // Duration in minutes (can be decimal)
     this.element = options.element || null; // DOM element to display timer
     this.progressElement = options.progressElement || null; // Progress indicator element
     this.onTick = options.onTick || null; // Callback for each tick
     this.onComplete = options.onComplete || null; // Callback when timer completes
     this.onWarning = options.onWarning || null; // Callback for warning thresholds
-    this.warningThresholds = options.warningThresholds || [10, 5]; // Warning thresholds in seconds
+    this.warningThresholds = options.warningThresholds || [10, 5]; // Warning thresholds in minutes
     this.audioAlert = options.audioAlert !== false; // Enable audio alerts (default: true)
     this.visualAlert = options.visualAlert !== false; // Enable visual alerts (default: true)
     
     this.isRunning = false;
     this.isPaused = false;
-    this.remainingTime = this.duration * 1000; // FIXED: Duration now in seconds, convert to milliseconds
+    this.remainingTime = this.duration * 60 * 1000; // Convert to milliseconds
     this.startTime = null;
     this.pausedTime = 0;
     this.interval = null;
     this.warningsTriggered = new Set();
     
-    // FIXED: Audio context initialization with better error handling
-    this.audioContextReady = false;
-    
     this.init();
   }
   
   init() {
-    // FIXED: Create audio context with user interaction detection
+    // Create audio context for alerts if enabled
     if (this.audioAlert && typeof AudioContext !== 'undefined') {
-      this.initializeAudioContext();
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     
     // Initialize display
     this.updateDisplay();
-  }
-  
-  // FIXED: Better audio context initialization
-  initializeAudioContext() {
-    try {
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
-      // Handle suspended audio context (browser policy)
-      if (this.audioContext.state === 'suspended') {
-        // Wait for user interaction to enable audio
-        const enableAudio = () => {
-          this.audioContext.resume().then(() => {
-            this.audioContextReady = true;
-            document.removeEventListener('click', enableAudio);
-            document.removeEventListener('keydown', enableAudio);
-          }).catch(err => {
-            console.warn('Could not resume audio context:', err);
-          });
-        };
-        
-        document.addEventListener('click', enableAudio, { once: true });
-        document.addEventListener('keydown', enableAudio, { once: true });
-      } else {
-        this.audioContextReady = true;
-      }
-    } catch (error) {
-      console.warn('Audio context initialization failed:', error);
-      this.audioAlert = false; // Disable audio alerts if initialization fails
-    }
   }
   
   start() {
@@ -117,7 +77,7 @@ class CustomTimer {
   
   reset() {
     this.stop();
-    this.remainingTime = this.duration * 1000; // FIXED: Use seconds
+    this.remainingTime = this.duration * 60 * 1000;
     this.pausedTime = 0;
     this.warningsTriggered.clear();
     this.updateDisplay();
@@ -135,7 +95,7 @@ class CustomTimer {
   
   tick() {
     const elapsed = Date.now() - this.startTime;
-    this.remainingTime = Math.max(0, (this.duration * 1000) - elapsed); // FIXED: Use seconds
+    this.remainingTime = Math.max(0, (this.duration * 60 * 1000) - elapsed);
     
     this.updateDisplay();
     this.checkWarnings();
@@ -159,10 +119,10 @@ class CustomTimer {
   }
   
   checkWarnings() {
-    const remainingSeconds = Math.ceil(this.remainingTime / 1000); // FIXED: Use seconds
+    const remainingMinutes = Math.ceil(this.remainingTime / (60 * 1000));
     
     this.warningThresholds.forEach(threshold => {
-      if (remainingSeconds <= threshold && !this.warningsTriggered.has(threshold)) {
+      if (remainingMinutes <= threshold && !this.warningsTriggered.has(threshold)) {
         this.warningsTriggered.add(threshold);
         this.triggerAlert('warning', threshold);
         
@@ -183,12 +143,8 @@ class CustomTimer {
     }
   }
   
-  // FIXED: Better audio alert with error handling
   playAudioAlert(type, threshold) {
-    if (!this.audioContext || !this.audioContextReady) {
-      console.warn('Audio context not ready, skipping audio alert');
-      return;
-    }
+    if (!this.audioContext) return;
     
     try {
       const oscillator = this.audioContext.createOscillator();
@@ -242,10 +198,10 @@ class CustomTimer {
       if (this.isPaused) {
         this.element.classList.add('paused');
       } else {
-        const remainingSeconds = this.remainingTime / 1000; // FIXED: Use seconds
-        if (remainingSeconds <= 5) {
+        const remainingMinutes = this.remainingTime / (60 * 1000);
+        if (remainingMinutes <= 5) {
           this.element.classList.add('danger');
-        } else if (remainingSeconds <= 10) {
+        } else if (remainingMinutes <= 10) {
           this.element.classList.add('warning');
         }
       }
@@ -257,7 +213,7 @@ class CustomTimer {
   }
   
   updateProgress() {
-    const totalTime = this.duration * 1000; // FIXED: Use seconds
+    const totalTime = this.duration * 60 * 1000;
     const progress = Math.max(0, Math.min(100, ((totalTime - this.remainingTime) / totalTime) * 100));
     
     if (this.progressElement.tagName === 'PROGRESS') {
@@ -268,12 +224,12 @@ class CustomTimer {
       progressBar.style.width = `${progress}%`;
       
       // Update color based on remaining time
-      const remainingSeconds = this.remainingTime / 1000; // FIXED: Use seconds
+      const remainingMinutes = this.remainingTime / (60 * 1000);
       progressBar.classList.remove('progress-warning', 'progress-danger');
       
-      if (remainingSeconds <= 5) {
+      if (remainingMinutes <= 5) {
         progressBar.classList.add('progress-danger');
-      } else if (remainingSeconds <= 10) {
+      } else if (remainingMinutes <= 10) {
         progressBar.classList.add('progress-warning');
       }
     }
@@ -297,16 +253,12 @@ class CustomTimer {
     return this.remainingTime;
   }
   
-  getRemainingSeconds() { // FIXED: Added method for seconds
-    return Math.ceil(this.remainingTime / 1000);
-  }
-  
   getRemainingMinutes() {
     return Math.ceil(this.remainingTime / (60 * 1000));
   }
   
   getProgress() {
-    const totalTime = this.duration * 1000; // FIXED: Use seconds
+    const totalTime = this.duration * 60 * 1000;
     return ((totalTime - this.remainingTime) / totalTime) * 100;
   }
   
@@ -315,24 +267,21 @@ class CustomTimer {
   }
   
   // Setter methods for dynamic configuration
-  setDuration(seconds) { // FIXED: Parameter name changed to seconds
+  setDuration(minutes) {
     if (!this.isRunning) {
-      this.duration = seconds;
-      this.remainingTime = this.duration * 1000;
+      this.duration = minutes; // Can be decimal for fractional minutes
+      this.remainingTime = this.duration * 60 * 1000;
       this.updateDisplay();
     }
   }
   
   setWarningThresholds(thresholds) {
-    this.warningThresholds = thresholds; // Now expects seconds
+    this.warningThresholds = thresholds;
     this.warningsTriggered.clear();
   }
   
   enableAudio(enabled = true) {
     this.audioAlert = enabled;
-    if (enabled && !this.audioContext) {
-      this.initializeAudioContext();
-    }
   }
   
   enableVisual(enabled = true) {
