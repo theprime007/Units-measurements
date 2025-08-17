@@ -17,6 +17,9 @@ class TestManager {
     
     // Timer DOM elements cache
     this.timerElements = {};
+    
+    // FIXED: Add default question time limit (in seconds)
+    this.defaultQuestionTimeLimit = 300; // 5 minutes default
   }
 
   // Initialize timer elements and cache them
@@ -122,15 +125,17 @@ class TestManager {
     // Use a simple enhanced timer if CustomTimer is not available
     if (typeof CustomTimer !== 'undefined') {
       this.customMainTimer = new CustomTimer({
-        duration: state.testDuration,
+        duration: state.testDuration * 60, // FIXED: Convert minutes to seconds
+        legacyMinutes: false, // Explicitly use seconds mode
         element: timerElement,
         progressElement: progressElement,
         audioAlert: true,
         visualAlert: true,
-        warningThresholds: [10, 5, 2],
+        warningThresholds: [600, 300, 120], // FIXED: Use seconds (10min, 5min, 2min)
         onComplete: () => this.submitTest(),
         onWarning: (threshold) => {
-          console.log(`Timer warning: ${threshold} minutes remaining`);
+          const minutes = Math.ceil(threshold / 60);
+          console.log(`Timer warning: ${minutes} minutes remaining`);
         }
       });
       
@@ -221,23 +226,42 @@ class TestManager {
     }, 1000);
   }
 
-  // Start question timer
+  // FIXED: Unified question timer method
   startQuestionTimer() {
     try {
       this.initializeTimerElements();
       const state = this.stateManager.getState();
-      if (state.enhancedTimer) {
-        this.startEnhancedQuestionTimer();
+      
+      // Get question time limit in seconds
+      const timeLimit = this.getQuestionTimeLimit();
+      
+      if (state.enhancedTimer && typeof CustomTimer !== 'undefined') {
+        this.startEnhancedQuestionTimer(timeLimit);
       } else {
-        this.startBasicQuestionTimer();
+        this.startBasicQuestionTimer(timeLimit);
       }
     } catch (error) {
       console.error('Start question timer error:', error);
     }
   }
 
-  // Start enhanced question timer
-  startEnhancedQuestionTimer() {
+  // FIXED: Get question time limit in seconds
+  getQuestionTimeLimit() {
+    const currentQuestions = this.getCurrentQuestions();
+    const currentQuestion = currentQuestions[this.stateManager.getCurrentQuestion()];
+    
+    // Check if question has specific time limit (assume it's in seconds)
+    if (currentQuestion && currentQuestion.timeLimit) {
+      return currentQuestion.timeLimit;
+    }
+    
+    // Use default or from settings
+    const state = this.stateManager.getState();
+    return state.questionTimeLimit || this.defaultQuestionTimeLimit;
+  }
+
+  // FIXED: Enhanced question timer with proper units
+  startEnhancedQuestionTimer(timeLimitSeconds) {
     if (this.customQuestionTimer) {
       this.customQuestionTimer.stop();
     }
@@ -247,7 +271,7 @@ class TestManager {
     
     if (!timerElement) {
       console.warn('Question timer element not found, falling back to basic timer');
-      this.startBasicQuestionTimer();
+      this.startBasicQuestionTimer(timeLimitSeconds);
       return;
     }
     
@@ -255,43 +279,47 @@ class TestManager {
       progressElement.classList.remove('hidden');
     }
     
-    const currentQuestions = this.getCurrentQuestions();
-    const currentQuestion = currentQuestions[this.stateManager.getCurrentQuestion()];
-    const timeLimit = (currentQuestion && currentQuestion.timeLimit) ? 
-      currentQuestion.timeLimit / 60 : 5; // Default 5 minutes per question
-    
     this.questionStartTime = Date.now();
     
-    // Use CustomTimer if available, otherwise fallback
-    if (typeof CustomTimer !== 'undefined') {
-      this.customQuestionTimer = new CustomTimer({
-        duration: timeLimit,
-        element: timerElement,
-        progressElement: progressElement,
-        audioAlert: false,
-        visualAlert: true,
-        warningThresholds: [2, 1],
-        onTick: (remaining) => {
-          const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
-          this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsed);
-        }
-      });
-      
-      this.customQuestionTimer.start();
-    } else {
-      this.startEnhancedBasicQuestionTimer(timeLimit);
-    }
+    this.customQuestionTimer = new CustomTimer({
+      duration: timeLimitSeconds, // FIXED: Now correctly in seconds
+      legacyMinutes: false,
+      element: timerElement,
+      progressElement: progressElement,
+      audioAlert: false, // Usually disabled for question timers
+      visualAlert: true,
+      warningThresholds: [120, 60, 30], // FIXED: 2min, 1min, 30sec warnings in seconds
+      onTick: (remaining) => {
+        const elapsed = Math.floor((Date.now() - this.questionStartTime) / 1000);
+        this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsed);
+      },
+      onComplete: () => {
+        // Optional: Auto-advance to next question when time runs out
+        console.log('Question time expired');
+      }
+    });
+    
+    this.customQuestionTimer.start();
   }
 
-  // Enhanced basic question timer (fallback)
-  startEnhancedBasicQuestionTimer(timeLimit) {
+  // FIXED: Basic question timer with countdown logic
+  startBasicQuestionTimer(timeLimitSeconds) {
     if (this.questionTimer) clearInterval(this.questionTimer);
     
     const timerElement = this.timerElements.questionTimer;
     const progressElement = this.timerElements.questionTimerProgress;
-    const totalDuration = timeLimit * 60 * 1000;
+    
+    if (!timerElement) {
+      console.warn('Question timer element not found');
+      return;
+    }
+    
+    if (progressElement) {
+      progressElement.classList.remove('hidden');
+    }
     
     this.questionStartTime = Date.now();
+    const totalDuration = timeLimitSeconds * 1000; // Convert to milliseconds
     
     this.questionTimer = setInterval(() => {
       const elapsed = Date.now() - this.questionStartTime;
@@ -299,14 +327,15 @@ class TestManager {
       
       if (timerElement) {
         if (remaining > 0) {
+          // FIXED: Show countdown instead of elapsed time
           const timeString = this.formatTime(remaining);
           timerElement.textContent = timeString;
           
           // Update warning classes
           timerElement.classList.remove('warning', 'danger');
-          if (remaining < 1 * 60 * 1000) {
+          if (remaining < 30 * 1000) { // 30 seconds
             timerElement.classList.add('danger');
-          } else if (remaining < 2 * 60 * 1000) {
+          } else if (remaining < 60 * 1000) { // 1 minute
             timerElement.classList.add('warning');
           }
         } else {
@@ -315,38 +344,22 @@ class TestManager {
         }
       }
       
-      // Update progress bar
-      if (progressElement && remaining > 0) {
+      // FIXED: Progress bar fills up instead of shrinking
+      if (progressElement) {
         const progressBar = progressElement.querySelector('.progress-bar');
         if (progressBar) {
-          const percentage = ((totalDuration - elapsed) / totalDuration) * 100;
-          progressBar.style.width = `${Math.max(0, percentage)}%`;
+          const percentage = ((totalDuration - remaining) / totalDuration) * 100;
+          progressBar.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+          
+          // Update progress bar color
+          progressBar.classList.remove('progress-warning', 'progress-danger');
+          if (remaining < 30 * 1000) {
+            progressBar.classList.add('progress-danger');
+          } else if (remaining < 60 * 1000) {
+            progressBar.classList.add('progress-warning');
+          }
         }
       }
-      
-      // Update time spent
-      const elapsedSeconds = Math.floor(elapsed / 1000);
-      this.stateManager.updateTimeSpent(this.stateManager.getCurrentQuestion(), elapsedSeconds);
-    }, 1000);
-  }
-
-  // Start basic question timer
-  startBasicQuestionTimer() {
-    this.questionStartTime = Date.now();
-    
-    if (this.questionTimer) clearInterval(this.questionTimer);
-    
-    const timerElement = this.timerElements.questionTimer;
-    
-    if (!timerElement) {
-      console.warn('Question timer element not found');
-      return;
-    }
-    
-    this.questionTimer = setInterval(() => {
-      const elapsed = Date.now() - this.questionStartTime;
-      const timeString = this.formatTime(elapsed);
-      timerElement.textContent = timeString;
       
       // Update time spent
       const elapsedSeconds = Math.floor(elapsed / 1000);
