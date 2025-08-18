@@ -245,26 +245,59 @@ class MockTestApp {
     }
   }
 
-  // Setup review answers view event listeners
-  setupReviewAnswersEventListeners() {
+  // ---updating setupReviewAnswersEventListeners function with this implementation ---
+
+function setupReviewAnswersEventListeners() {
+  try {
     // Back to results button
-    const backToResultsBtn = document.getElementById('back-to-results-btn');
-    if (backToResultsBtn) {
-      backToResultsBtn.addEventListener('click', () => this.viewManager.showView('result'));
+    const backBtn = document.getElementById('back-to-results-btn');
+    if (backBtn && backBtn.dataset.bound !== 'true') {
+      backBtn.addEventListener('click', () => {
+        const viewManager = window.app?.viewManager || window.viewManager;
+        if (viewManager) viewManager.showView('result');
+      });
+      backBtn.dataset.bound = 'true';
     }
 
-    // Review navigation buttons
-    const reviewPrevBtn = document.getElementById('review-prev-btn');
-    if (reviewPrevBtn) {
-      reviewPrevBtn.addEventListener('click', () => this.navigateReview(-1));
+    // Sidebar toggle button (open/close)
+    const sidebarToggle = document.getElementById('review-sidebar-toggle');
+    if (sidebarToggle && sidebarToggle.dataset.bound !== 'true') {
+      sidebarToggle.addEventListener('click', () => {
+        const overlay = document.getElementById('review-sidebar-overlay');
+        if (overlay) overlay.classList.toggle('hidden');
+      });
+      sidebarToggle.dataset.bound = 'true';
     }
 
-    const reviewNextBtn = document.getElementById('review-next-btn');
-    if (reviewNextBtn) {
-      reviewNextBtn.addEventListener('click', () => this.navigateReview(1));
+    // Delegated "Jump to Question" handler for the sidebar list
+    const sidebarList = document.getElementById('review-sidebar-list');
+    if (sidebarList && sidebarList.dataset.delegationBound !== 'true') {
+      sidebarList.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-jump-question]');
+        if (btn) {
+          const idx = Number(btn.dataset.jumpQuestion);
+          if (!Number.isNaN(idx)) {
+            // Update state and navigate
+            const stateManager = window.app?.stateManager || window.stateManager;
+            const testManager = window.app?.testManager || window.testManager;
+            if (stateManager) stateManager.setReviewCurrentQuestion(idx);
+            if (testManager && typeof testManager.goToQuestion === 'function') {
+              testManager.goToQuestion(idx);
+            } else if (window.app?.viewManager?.reviewManager) {
+              window.app.viewManager.reviewManager.showQuestion(idx);
+            }
+            // Close overlay on mobile
+            const overlay = document.getElementById('review-sidebar-overlay');
+            if (overlay) overlay.classList.add('hidden');
+          }
+        }
+      });
+      sidebarList.dataset.delegationBound = 'true';
     }
+  } catch (error) {
+    console.error('setupReviewAnswersEventListeners error:', error);
   }
-
+}
   // Setup global event listeners
   setupGlobalEventListeners() {
     // Window beforeunload for auto-save
