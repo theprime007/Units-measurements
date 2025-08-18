@@ -2,12 +2,15 @@
 // Handles view switching, component loading, and UI state management
 
 class ViewManager {
-  constructor() {
+  constructor({ stateManager = null, questionManager = null, testManager = null } = {}) {
     this.currentView = 'landing';
     this.views = ['landing', 'test', 'result', 'review-answers'];
     this.componentCache = {};
-    // Optionally, you may initialize reviewManager here if needed
-    // this.reviewManager = null;
+    // allow optional DI; fall back to window.* if not provided
+    this.stateManager = stateManager || (window.app && window.app.stateManager) || window.stateManager || null;
+    this.questionManager = questionManager || (window.app && window.app.questionManager) || window.questionManager || null;
+    this.testManager = testManager || (window.app && window.app.testManager) || window.testManager || null;
+    this.reviewManager = null;
   }
 
   // Initialize view manager
@@ -50,10 +53,10 @@ class ViewManager {
       if (!response.ok) {
         throw new Error(`Failed to load component: ${componentName} (${response.status})`);
       }
-      
+
       const html = await response.text();
       this.componentCache[componentName] = html;
-      
+
       // Insert component into DOM if it's a view or panel
       if (componentName.includes('view') || componentName === 'review-panel') {
         const container = document.getElementById('app-container');
@@ -61,7 +64,7 @@ class ViewManager {
           // Create a temporary container to parse the HTML
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = html;
-          
+
           // Extract the main component element
           const componentElement = tempDiv.firstElementChild;
           if (componentElement) {
@@ -69,7 +72,7 @@ class ViewManager {
             if (componentName.includes('view') && !componentElement.id) {
               componentElement.id = componentName;
             }
-            
+
             // Check if component already exists in DOM
             const existingComponent = document.getElementById(componentElement.id);
             if (existingComponent) {
@@ -79,22 +82,22 @@ class ViewManager {
               // Append new component
               container.appendChild(componentElement);
             }
-            
+
             // Initialize component-specific functionality
             this.initializeComponent(componentName, componentElement);
           }
         }
       }
-      
+
       return html;
     } catch (error) {
       console.error(`Error loading component ${componentName}:`, error);
-      
+
       // Provide fallback for critical components
       if (componentName.includes('view')) {
         return this.createFallbackView(componentName);
       }
-      
+
       throw error;
     }
   }
@@ -105,7 +108,7 @@ class ViewManager {
       // Add 'view' class to view components for CSS styling
       if (componentName.includes('view')) {
         element.classList.add('view');
-        
+
         // Ensure view is hidden initially (except landing)
         if (componentName !== 'landing-view') {
           element.classList.remove('active');
@@ -114,7 +117,7 @@ class ViewManager {
           element.classList.add('active');
         }
       }
-      
+
       // Component-specific initialization
       switch (componentName) {
         case 'test-view':
@@ -124,7 +127,7 @@ class ViewManager {
           this.initializeResultView(element);
           break;
         case 'review-answers-view':
-          this.initializeReviewAnswersView(element); // <-- replaced method
+          this.initializeReviewAnswersView(element);
           break;
         case 'review-panel':
           this.initializeReviewPanel(element);
@@ -140,47 +143,89 @@ class ViewManager {
     // Initialize test-specific event listeners and functionality
     const nextBtn = element.querySelector('#next-question');
     const prevBtn = element.querySelector('#prev-question');
-    
-    if (nextBtn) nextBtn.addEventListener('click', () => window.testManager?.nextQuestion());
-    if (prevBtn) prevBtn.addEventListener('click', () => window.testManager?.previousQuestion());
+
+    if (nextBtn) nextBtn.addEventListener('click', () => this.testManager?.nextQuestion());
+    if (prevBtn) prevBtn.addEventListener('click', () => this.testManager?.previousQuestion());
   }
 
   initializeResultView(element) {
     // Initialize result-specific functionality
     const reviewBtn = element.querySelector('#review-answers-btn');
-    if (reviewBtn) reviewBtn.addEventListener('click', () => this.showView('review-answers'));
+    if (reviewBtn && reviewBtn.dataset.bound !== 'true') {
+      reviewBtn.addEventListener('click', () => this.showView('review-answers'));
+      reviewBtn.dataset.bound = 'true';
+    }
   }
 
-  // REPLACEMENT: initializeReviewAnswersView now also calls initializeReviewManager
+  // REPLACEMENT: initializeReviewAnswersView now also calls initializeReviewManager and prevents double-binding
   initializeReviewAnswersView(element) {
-    // Initialize review-specific functionality
-    const backBtn = element.querySelector('#back-to-results-btn');
-    if (backBtn) backBtn.addEventListener('click', () => this.showView('result'));
-    
-    // Initialize the review manager when the view is loaded
-    this.initializeReviewManager(element);
+    try {
+      // Bind back to results button (prevent duplicate binding)
+      const backBtn = element.querySelector('#back-to-results-btn');
+      if (backBtn && backBtn.dataset.bound !== 'true') {
+        backBtn.addEventListener('click', () => this.showView('result'));
+        backBtn.dataset.bound = 'true';
+      }
+
+      // Bind jump-to-question inputs inside this view (delegated handler for list)
+      const sidebarList = element.querySelector('#review-sidebar-list');
+      if (sidebarList && sidebarList.dataset.delegationBound !== 'true') {
+        sidebarList.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-jump-question]');
+          if (btn) {
+            const idx = Number(btn.dataset.jumpQuestion);
+            if (!Number.isNaN(idx)) {
+              // Set review current and notify reviewManager / testManager
+              (this.stateManager || (window.app && window.app.stateManager) || window.stateManager)?.setReviewCurrentQuestion(idx);
+              if (this.reviewManager) {
+                this.reviewManager.showQuestion(idx);
+              } else if (this.testManager && typeof this.testManager.goToQuestion === 'function') {
+                this.testManager.goToQuestion(idx);
+              }
+              // On mobile, hide sidebar overlay
+              const overlay = document.getElementById('review-sidebar-overlay');
+              if (overlay) overlay.classList.add('hidden');
+            }
+          }
+        });
+        sidebarList.dataset.delegationBound = 'true';
+      }
+
+      // Initialize review manager when component is inserted (but actual data init occurs on view activation)
+      this.initializeReviewManager(element);
+    } catch (error) {
+      console.error('initializeReviewAnswersView error:', error);
+    }
   }
 
-  // NEW: initializeReviewManager method
+  // NEW: initializeReviewManager method (idempotent)
   initializeReviewManager(element) {
     try {
-      // Create review manager if it doesn't exist
-      if (!this.reviewManager) {
-        this.reviewManager = new ReviewAnswersManager();
+      // allow DI or fallbacks
+      const stateManager = this.stateManager || (window.app && window.app.stateManager) || window.stateManager;
+      const questionManager = this.questionManager || (window.app && window.app.questionManager) || window.questionManager;
+
+      if (!stateManager || !questionManager) {
+        console.warn('initializeReviewManager: missing managers (stateManager/questionManager)');
+        return;
       }
-      
-      // Get required data from global managers
-      const stateManager = window.app?.stateManager || window.stateManager;
-      const questionManager = window.app?.questionManager || window.questionManager;
-      
-      if (stateManager && questionManager) {
-        const testResults = stateManager.getTestResults();
-        const questions = questionManager.getQuestions(); // or getAllQuestions() if you have it
-        
-        // Initialize the review manager with data
-        this.reviewManager.initialize(testResults, questions);
-      } else {
-        console.error('StateManager or QuestionManager not available for review initialization');
+
+      // create manager if not exists
+      if (!this.reviewManager) {
+        if (typeof ReviewAnswersManager === 'undefined') {
+          console.error('ReviewAnswersManager class not found. Make sure js/review-manager.js is loaded.');
+          return;
+        }
+        this.reviewManager = new ReviewAnswersManager({ stateManager, questionManager, viewManager: this });
+      }
+
+      // Provide test data and questions
+      const testResults = typeof stateManager.getTestResults === 'function' ? stateManager.getTestResults() : { answers: [], timeSpent: [] };
+      const questions = typeof questionManager.getQuestions === 'function' ? questionManager.getQuestions() : (typeof questionManager.getAllQuestions === 'function' ? questionManager.getAllQuestions() : []);
+
+      // Initialize (idempotent)
+      if (typeof this.reviewManager.initialize === 'function') {
+        this.reviewManager.initialize(testResults, questions, element);
       }
     } catch (error) {
       console.error('Error initializing review manager:', error);
@@ -206,20 +251,20 @@ class ViewManager {
         </div>
       </div>
     `;
-    
+
     // Insert fallback into DOM
     const container = document.getElementById('app-container');
     if (container) {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = fallbackHTML;
       const fallbackElement = tempDiv.firstElementChild;
-      
+
       if (fallbackElement) {
         container.appendChild(fallbackElement);
         this.initializeComponent(componentName, fallbackElement);
       }
     }
-    
+
     this.componentCache[componentName] = fallbackHTML;
     return fallbackHTML;
   }
@@ -234,13 +279,13 @@ class ViewManager {
           element.classList.remove('active');
         }
       });
-      
+
       // Show target view
       const targetView = document.getElementById(`${viewName}-view`);
       if (targetView) {
         targetView.classList.add('active');
         this.currentView = viewName;
-        
+
         // Trigger view-specific actions
         this.onViewActivated(viewName, targetView);
       } else {
@@ -262,25 +307,34 @@ class ViewManager {
     }
   }
 
-  // UPDATED: onViewActivated to call initializeReviewManager for 'review-answers'
+  // Handle view activation events
   onViewActivated(viewName, element) {
     try {
       switch (viewName) {
         case 'test':
           // Refresh test display
-          if (window.testManager) {
-            window.testManager.updateQuestionDisplay();
+          if (this.testManager) {
+            this.testManager.updateQuestionDisplay?.();
+          } else if (window.testManager) {
+            window.testManager.updateQuestionDisplay?.();
           }
           break;
         case 'result':
           // Update result calculations
-          if (window.testManager) {
-            window.testManager.calculateResults();
+          if (this.testManager) {
+            this.testManager.calculateResults?.();
+          } else if (window.testManager) {
+            window.testManager.calculateResults?.();
           }
           break;
         case 'review-answers':
-          // Initialize review functionality - UPDATED
-          this.initializeReviewManager(element);
+          // Initialize review functionality - ensure data is ready
+          // Prefer testManager.initializeReview if present, otherwise initialize here
+          if (this.testManager && typeof this.testManager.initializeReview === 'function') {
+            this.testManager.initializeReview(element);
+          } else {
+            this.initializeReviewManager(element);
+          }
           break;
       }
     } catch (error) {
@@ -298,21 +352,21 @@ class ViewManager {
     try {
       const durationSelect = document.getElementById('test-duration');
       const customSection = document.getElementById('custom-duration-section');
-      
+
       if (!durationSelect || !customSection) return;
 
       // Check if current duration matches a preset value
       const isCustomDuration = ![60, 90, 120].includes(state.testDuration);
-      
+
       if (isCustomDuration) {
         durationSelect.value = 'custom';
         customSection.classList.remove('hidden');
-        
+
         // Set custom input values from state
         const totalMinutes = state.testDuration;
         const minutes = Math.floor(totalMinutes);
         const seconds = Math.round((totalMinutes - minutes) * 60);
-        
+
         const minutesInput = document.getElementById('custom-minutes');
         const secondsInput = document.getElementById('custom-seconds');
         if (minutesInput) minutesInput.value = minutes;
@@ -321,33 +375,33 @@ class ViewManager {
         durationSelect.value = state.testDuration;
         customSection.classList.add('hidden');
       }
-      
+
       // Update checkboxes
       const checkboxes = {
         'rrb-mode': state.isRRBMode,
         'dark-mode': state.isDarkMode,
         'enhanced-timer': state.enhancedTimer
       };
-      
+
       Object.entries(checkboxes).forEach(([id, checked]) => {
         const element = document.getElementById(id);
         if (element) element.checked = checked;
       });
-      
+
       const questionSource = document.getElementById('question-source');
       if (questionSource) questionSource.value = state.questionSource;
-      
+
       // Update question count display
       this.updateQuestionCount(state);
-      
+
       // Show/hide JSON upload section
       this.toggleQuestionSourceSection(state.questionSource);
-      
+
       // Apply theme modes
       if (state.isRRBMode) {
         document.body.setAttribute('data-rrb-mode', 'true');
       }
-      
+
       if (state.isDarkMode) {
         document.body.setAttribute('data-color-scheme', 'dark');
       }
@@ -401,16 +455,16 @@ class ViewManager {
       const modal = document.getElementById(modalId);
       if (modal) {
         modal.classList.remove('hidden');
-        
+
         // Add modal event listeners if not already added
         this.bindModalEvents(modal);
-        
+
         // Focus management for accessibility
         const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (firstFocusable) {
           firstFocusable.focus();
         }
-        
+
         // Prevent body scroll when modal is open
         document.body.style.overflow = 'hidden';
       }
@@ -424,7 +478,7 @@ class ViewManager {
       const modal = document.getElementById(modalId);
       if (modal) {
         modal.classList.add('hidden');
-        
+
         // Restore body scroll
         document.body.style.overflow = '';
       }
@@ -436,24 +490,24 @@ class ViewManager {
   // Bind modal event listeners
   bindModalEvents(modal) {
     const modalId = modal.id;
-    
+
     // Prevent duplicate event binding
     if (modal.dataset.eventsbound === 'true') {
       return;
     }
-    
+
     // Close button
     const closeBtn = modal.querySelector('.modal-close');
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this.hideModal(modalId));
     }
-    
+
     // Backdrop click
     const backdrop = modal.querySelector('.modal-backdrop');
     if (backdrop) {
       backdrop.addEventListener('click', () => this.hideModal(modalId));
     }
-    
+
     // ESC key
     const escHandler = (e) => {
       if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
@@ -461,7 +515,7 @@ class ViewManager {
       }
     };
     document.addEventListener('keydown', escHandler);
-    
+
     // Store reference for cleanup
     modal._escHandler = escHandler;
     modal.dataset.eventsbound = 'true';
