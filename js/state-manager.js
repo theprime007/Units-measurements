@@ -43,7 +43,7 @@ class StateManager {
       const saved = localStorage.getItem(this.storageKey);
       if (saved) {
         const loadedState = JSON.parse(saved);
-        
+
         // Validate loaded state structure
         if (this.validateState(loadedState)) {
           this.state = { ...this.state, ...loadedState };
@@ -71,7 +71,7 @@ class StateManager {
       }
     } catch (error) {
       console.error('Save state error:', error);
-      
+
       // Try to recover storage space if quota exceeded
       if (error.name === 'QuotaExceededError') {
         this.handleStorageQuotaExceeded();
@@ -84,25 +84,26 @@ class StateManager {
     if (!state || typeof state !== 'object') {
       return false;
     }
-    
-    // Check required properties
+
+    // Check required properties exist and core types
     const requiredProps = ['answers', 'bookmarked', 'timeSpent', 'currentQ', 'testDuration'];
     for (const prop of requiredProps) {
       if (!(prop in state)) {
         return false;
       }
     }
-    
+
     // Check array properties
     if (!Array.isArray(state.answers) || !Array.isArray(state.bookmarked) || !Array.isArray(state.timeSpent)) {
       return false;
     }
-    
+
     // Check numeric properties
     if (typeof state.currentQ !== 'number' || typeof state.testDuration !== 'number') {
       return false;
     }
-    
+
+    // Optional props like reviewCurrentQ, results, customQuestions allowed
     return true;
   }
 
@@ -120,7 +121,7 @@ class StateManager {
   handleStorageQuotaExceeded() {
     try {
       console.warn('Storage quota exceeded, attempting cleanup');
-      
+
       // Keep only essential state
       const essentialState = {
         answers: this.state.answers,
@@ -131,7 +132,7 @@ class StateManager {
         testEnd: this.state.testEnd,
         testDuration: this.state.testDuration
       };
-      
+
       localStorage.setItem(this.storageKey, JSON.stringify(essentialState));
       console.log('Essential state saved after cleanup');
     } catch (error) {
@@ -182,27 +183,39 @@ class StateManager {
 
   // New helper: return consolidated test results / summary
   getTestResults() {
+    // Always return a stable shape to consumers
+    const results = this.state.results || {};
     return {
-      answers: this.state.answers,
-      timeSpent: this.state.timeSpent,
-      score: this.state.results?.score || 0,
+      answers: Array.isArray(this.state.answers) ? this.state.answers : [],
+      timeSpent: Array.isArray(this.state.timeSpent) ? this.state.timeSpent : [],
+      score: typeof results.score === 'number' ? results.score : 0,
       totalQuestions: this.getTotalQuestions(),
-      correctAnswers: this.state.results?.correctAnswers || 0,
-      incorrectAnswers: this.state.results?.incorrectAnswers || 0,
-      unanswered: this.state.results?.unanswered || 0,
+      correctAnswers: typeof results.correctAnswers === 'number' ? results.correctAnswers : 0,
+      incorrectAnswers: typeof results.incorrectAnswers === 'number' ? results.incorrectAnswers : 0,
+      unanswered: typeof results.unanswered === 'number' ? results.unanswered : this.getUnansweredCount(),
       testStart: this.state.testStart,
       testEnd: this.state.testEnd,
-      testDuration: this.state.testDuration
+      testDuration: this.state.testDuration,
+      rawResults: results
     };
+  }
+
+  // New helper: count unanswered questions
+  getUnansweredCount() {
+    if (!Array.isArray(this.state.answers)) return this.getTotalQuestions();
+    return this.state.answers.filter(a => a === null || typeof a === 'undefined').length;
   }
 
   // New methods for review view navigation
   setReviewCurrentQuestion(questionIndex) {
-    this.updateState({ reviewCurrentQ: questionIndex });
+    // Ensure bounds safety
+    const total = this.getTotalQuestions();
+    const idx = Math.max(0, Math.min(total - 1, Number(questionIndex) || 0));
+    this.updateState({ reviewCurrentQ: idx });
   }
 
   getReviewCurrentQuestion() {
-    return this.state.reviewCurrentQ;
+    return typeof this.state.reviewCurrentQ === 'number' ? this.state.reviewCurrentQ : 0;
   }
 
   // Setters for common state changes
@@ -211,25 +224,25 @@ class StateManager {
   }
 
   setAnswer(questionIndex, answerIndex) {
-    const answers = [...this.state.answers];
+    const answers = Array.isArray(this.state.answers) ? [...this.state.answers] : [];
     answers[questionIndex] = answerIndex;
     this.updateState({ answers });
   }
 
   toggleBookmark(questionIndex) {
-    const bookmarked = [...this.state.bookmarked];
+    const bookmarked = Array.isArray(this.state.bookmarked) ? [...this.state.bookmarked] : [];
     bookmarked[questionIndex] = !bookmarked[questionIndex];
     this.updateState({ bookmarked });
   }
 
   clearAnswer(questionIndex) {
-    const answers = [...this.state.answers];
+    const answers = Array.isArray(this.state.answers) ? [...this.state.answers] : [];
     answers[questionIndex] = null;
     this.updateState({ answers });
   }
 
   updateTimeSpent(questionIndex, timeSpent) {
-    const timeSpentArray = [...this.state.timeSpent];
+    const timeSpentArray = Array.isArray(this.state.timeSpent) ? [...this.state.timeSpent] : [];
     timeSpentArray[questionIndex] = timeSpent;
     this.updateState({ timeSpent: timeSpentArray });
   }
@@ -274,10 +287,12 @@ class StateManager {
   }
 
   getAnsweredCount() {
-    return this.state.answers.filter(answer => answer !== null).length;
+    if (!Array.isArray(this.state.answers)) return 0;
+    return this.state.answers.filter(answer => answer !== null && typeof answer !== 'undefined').length;
   }
 
   getBookmarkedCount() {
+    if (!Array.isArray(this.state.bookmarked)) return 0;
     return this.state.bookmarked.filter(Boolean).length;
   }
 }
