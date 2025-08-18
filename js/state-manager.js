@@ -180,6 +180,31 @@ class StateManager {
     return this.state.results;
   }
 
+  // New helper: return consolidated test results / summary
+  getTestResults() {
+    return {
+      answers: this.state.answers,
+      timeSpent: this.state.timeSpent,
+      score: this.state.results?.score || 0,
+      totalQuestions: this.getTotalQuestions(),
+      correctAnswers: this.state.results?.correctAnswers || 0,
+      incorrectAnswers: this.state.results?.incorrectAnswers || 0,
+      unanswered: this.state.results?.unanswered || 0,
+      testStart: this.state.testStart,
+      testEnd: this.state.testEnd,
+      testDuration: this.state.testDuration
+    };
+  }
+
+  // New methods for review view navigation
+  setReviewCurrentQuestion(questionIndex) {
+    this.updateState({ reviewCurrentQ: questionIndex });
+  }
+
+  getReviewCurrentQuestion() {
+    return this.state.reviewCurrentQ;
+  }
+
   // Setters for common state changes
   setCurrentQuestion(questionIndex) {
     this.updateState({ currentQ: questionIndex });
