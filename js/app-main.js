@@ -245,59 +245,56 @@ class MockTestApp {
     }
   }
 
-  // ---updating setupReviewAnswersEventListeners function with this implementation ---
+  // Setup review answers view event listeners
+  setupReviewAnswersEventListeners() {
+    try {
+      // Back to results button
+      const backBtn = document.getElementById('back-to-results-btn');
+      if (backBtn && backBtn.dataset.bound !== 'true') {
+        backBtn.addEventListener('click', () => {
+          if (this.viewManager) this.viewManager.showView('result');
+        });
+        backBtn.dataset.bound = 'true';
+      }
 
-function setupReviewAnswersEventListeners() {
-  try {
-    // Back to results button
-    const backBtn = document.getElementById('back-to-results-btn');
-    if (backBtn && backBtn.dataset.bound !== 'true') {
-      backBtn.addEventListener('click', () => {
-        const viewManager = window.app?.viewManager || window.viewManager;
-        if (viewManager) viewManager.showView('result');
-      });
-      backBtn.dataset.bound = 'true';
-    }
+      // Sidebar toggle button (open/close)
+      const sidebarToggle = document.getElementById('review-sidebar-toggle');
+      if (sidebarToggle && sidebarToggle.dataset.bound !== 'true') {
+        sidebarToggle.addEventListener('click', () => {
+          const overlay = document.getElementById('review-sidebar-overlay');
+          if (overlay) overlay.classList.toggle('hidden');
+        });
+        sidebarToggle.dataset.bound = 'true';
+      }
 
-    // Sidebar toggle button (open/close)
-    const sidebarToggle = document.getElementById('review-sidebar-toggle');
-    if (sidebarToggle && sidebarToggle.dataset.bound !== 'true') {
-      sidebarToggle.addEventListener('click', () => {
-        const overlay = document.getElementById('review-sidebar-overlay');
-        if (overlay) overlay.classList.toggle('hidden');
-      });
-      sidebarToggle.dataset.bound = 'true';
-    }
-
-    // Delegated "Jump to Question" handler for the sidebar list
-    const sidebarList = document.getElementById('review-sidebar-list');
-    if (sidebarList && sidebarList.dataset.delegationBound !== 'true') {
-      sidebarList.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-jump-question]');
-        if (btn) {
-          const idx = Number(btn.dataset.jumpQuestion);
-          if (!Number.isNaN(idx)) {
-            // Update state and navigate
-            const stateManager = window.app?.stateManager || window.stateManager;
-            const testManager = window.app?.testManager || window.testManager;
-            if (stateManager) stateManager.setReviewCurrentQuestion(idx);
-            if (testManager && typeof testManager.goToQuestion === 'function') {
-              testManager.goToQuestion(idx);
-            } else if (window.app?.viewManager?.reviewManager) {
-              window.app.viewManager.reviewManager.showQuestion(idx);
+      // Delegated "Jump to Question" handler for the sidebar list
+      const sidebarList = document.getElementById('review-sidebar-list');
+      if (sidebarList && sidebarList.dataset.delegationBound !== 'true') {
+        sidebarList.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-jump-question]');
+          if (btn) {
+            const idx = Number(btn.dataset.jumpQuestion);
+            if (!Number.isNaN(idx)) {
+              // Update state and navigate
+              if (this.stateManager) this.stateManager.setReviewCurrentQuestion(idx);
+              if (this.testManager && typeof this.testManager.goToQuestion === 'function') {
+                this.testManager.goToQuestion(idx);
+              } else if (this.viewManager && this.viewManager.reviewManager) {
+                this.viewManager.reviewManager.showQuestion(idx);
+              }
+              // Close overlay on mobile
+              const overlay = document.getElementById('review-sidebar-overlay');
+              if (overlay) overlay.classList.add('hidden');
             }
-            // Close overlay on mobile
-            const overlay = document.getElementById('review-sidebar-overlay');
-            if (overlay) overlay.classList.add('hidden');
           }
-        }
-      });
-      sidebarList.dataset.delegationBound = 'true';
+        });
+        sidebarList.dataset.delegationBound = 'true';
+      }
+    } catch (error) {
+      console.error('setupReviewAnswersEventListeners error:', error);
     }
-  } catch (error) {
-    console.error('setupReviewAnswersEventListeners error:', error);
   }
-}
+
   // Setup global event listeners
   setupGlobalEventListeners() {
     // Window beforeunload for auto-save
