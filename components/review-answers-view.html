@@ -6,6 +6,8 @@
             <div class="review-nav">
                 <span class="question-number">Question <span id="review-q-num">1</span> of 50</span>
                 <button id="back-to-results-btn" class="btn btn--outline btn--sm">← Back to Results</button>
+                <!-- New Jump-to-Question Button -->
+                <button id="toggleReviewSidebar" class="btn btn--secondary btn--sm">Jump to Question</button>
             </div>
         </div>
 
@@ -18,24 +20,17 @@
                 <div class="answer-comparison">
                     <div class="user-answer">
                         <h4>Your Answer:</h4>
-                        <div id="user-answer-display" class="answer-display">
-                            <!-- User's answer -->
-                        </div>
+                        <div id="user-answer-display" class="answer-display"></div>
                     </div>
-
                     <div class="correct-answer">
                         <h4>Correct Answer:</h4>
-                        <div id="correct-answer-display" class="answer-display">
-                            <!-- Correct answer -->
-                        </div>
+                        <div id="correct-answer-display" class="answer-display"></div>
                     </div>
                 </div>
 
                 <div class="solution-section">
                     <h4>Solution:</h4>
-                    <div id="solution-text" class="solution-content">
-                        <!-- Solution explanation -->
-                    </div>
+                    <div id="solution-text" class="solution-content"></div>
                 </div>
 
                 <div class="question-stats">
@@ -57,3 +52,75 @@
         </div>
     </div>
 </div>
+
+<!-- Sidebar -->
+<div id="reviewSidebar" class="review-sidebar">
+    <h3>All Questions</h3>
+    <ul id="reviewSidebarList"></ul>
+</div>
+
+<style>
+.review-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100%;
+  background: var(--color-surface, #fff);
+  border-left: 1px solid var(--color-card-border, #ddd);
+  box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+  padding: 1rem;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+.review-sidebar.active {
+  transform: translateX(0);
+}
+.review-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.review-sidebar li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-card-border, #eee);
+  cursor: pointer;
+}
+.review-sidebar li strong {
+  color: var(--color-primary, #007bff);
+  margin-right: 0.5rem;
+}
+.review-sidebar li:hover {
+  background: var(--color-hover, #f8f8f8);
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const toggleBtn = document.getElementById("toggleReviewSidebar");
+  const sidebar = document.getElementById("reviewSidebar");
+  const list = document.getElementById("reviewSidebarList");
+
+  // Toggle sidebar
+  toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("active");
+  });
+
+  // Assume `reviewQuestions` is the array of all questions (same data used to populate review view)
+  if (typeof reviewQuestions !== "undefined") {
+    list.innerHTML = "";
+    reviewQuestions.forEach((q, i) => {
+      const preview = q.text.split(" ").slice(0, 15).join(" ") + "...";
+      const li = document.createElement("li");
+      li.innerHTML = `<strong>Q${i+1}:</strong> ${preview}`;
+      li.addEventListener("click", () => {
+        loadReviewQuestion(i);  // your existing function that loads question i
+        sidebar.classList.remove("active");
+      });
+      list.appendChild(li);
+    });
+  }
+});
+</script>
