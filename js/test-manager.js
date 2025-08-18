@@ -678,6 +678,53 @@ class TestManager {
       console.error('Initialize review error:', error);
     }
   }
+  // --- Add the following method inside your existing TestManager class ---
+
+// Initialize review flow and connect to ReviewAnswersManager
+initializeReview(element) {
+  try {
+    // Ensure results are calculated and saved in state so review has data
+    const stateManager = this.stateManager || (window.app && window.app.stateManager) || window.stateManager;
+    if (!stateManager) {
+      console.error('initializeReview: StateManager not available');
+      return;
+    }
+
+    // If results are not set, calculate them (if TestManager has calculateResults)
+    if (!stateManager.getResults() && typeof this.calculateResults === 'function') {
+      this.calculateResults();
+    }
+
+    // If view manager exists, prefer delegating initialization
+    const viewManager = this.viewManager || (window.app && window.app.viewManager) || window.viewManager;
+    if (viewManager && typeof viewManager.initializeReviewManager === 'function') {
+      viewManager.initializeReviewManager(element);
+      return;
+    }
+
+    // Fallback: create ReviewAnswersManager here if available
+    if (typeof ReviewAnswersManager === 'function') {
+      if (!this.reviewManager) {
+        this.reviewManager = new ReviewAnswersManager({
+          stateManager,
+          questionManager: this.questionManager || (window.app && window.app.questionManager) || window.questionManager,
+          viewManager: viewManager || null
+        });
+      }
+
+      const testResults = stateManager.getTestResults ? stateManager.getTestResults() : { answers: [], timeSpent: [] };
+      const questions = (this.questionManager && typeof this.questionManager.getQuestions === 'function')
+        ? this.questionManager.getQuestions()
+        : (window.questionManager && typeof window.questionManager.getQuestions === 'function' ? window.questionManager.getQuestions() : []);
+
+      this.reviewManager.initialize(testResults, questions, element);
+    } else {
+      console.error('initializeReview: ReviewAnswersManager not available');
+    }
+  } catch (error) {
+    console.error('TestManager.initializeReview error:', error);
+  }
+}
 
   // FIXED: Display current question with proper timer reset
   displayQuestion() {
