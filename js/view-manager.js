@@ -6,6 +6,8 @@ class ViewManager {
     this.currentView = 'landing';
     this.views = ['landing', 'test', 'result', 'review-answers'];
     this.componentCache = {};
+    // Optionally, you may initialize reviewManager here if needed
+    // this.reviewManager = null;
   }
 
   // Initialize view manager
@@ -122,7 +124,7 @@ class ViewManager {
           this.initializeResultView(element);
           break;
         case 'review-answers-view':
-          this.initializeReviewAnswersView(element);
+          this.initializeReviewAnswersView(element); // <-- replaced method
           break;
         case 'review-panel':
           this.initializeReviewPanel(element);
@@ -149,10 +151,40 @@ class ViewManager {
     if (reviewBtn) reviewBtn.addEventListener('click', () => this.showView('review-answers'));
   }
 
+  // REPLACEMENT: initializeReviewAnswersView now also calls initializeReviewManager
   initializeReviewAnswersView(element) {
     // Initialize review-specific functionality
     const backBtn = element.querySelector('#back-to-results-btn');
     if (backBtn) backBtn.addEventListener('click', () => this.showView('result'));
+    
+    // Initialize the review manager when the view is loaded
+    this.initializeReviewManager(element);
+  }
+
+  // NEW: initializeReviewManager method
+  initializeReviewManager(element) {
+    try {
+      // Create review manager if it doesn't exist
+      if (!this.reviewManager) {
+        this.reviewManager = new ReviewAnswersManager();
+      }
+      
+      // Get required data from global managers
+      const stateManager = window.app?.stateManager || window.stateManager;
+      const questionManager = window.app?.questionManager || window.questionManager;
+      
+      if (stateManager && questionManager) {
+        const testResults = stateManager.getTestResults();
+        const questions = questionManager.getQuestions(); // or getAllQuestions() if you have it
+        
+        // Initialize the review manager with data
+        this.reviewManager.initialize(testResults, questions);
+      } else {
+        console.error('StateManager or QuestionManager not available for review initialization');
+      }
+    } catch (error) {
+      console.error('Error initializing review manager:', error);
+    }
   }
 
   initializeReviewPanel(element) {
@@ -230,7 +262,7 @@ class ViewManager {
     }
   }
 
-  // Handle view activation events
+  // UPDATED: onViewActivated to call initializeReviewManager for 'review-answers'
   onViewActivated(viewName, element) {
     try {
       switch (viewName) {
@@ -247,10 +279,8 @@ class ViewManager {
           }
           break;
         case 'review-answers':
-          // Initialize review functionality
-          if (window.testManager) {
-            window.testManager.initializeReview();
-          }
+          // Initialize review functionality - UPDATED
+          this.initializeReviewManager(element);
           break;
       }
     } catch (error) {
